@@ -1,0 +1,86 @@
+const express = require('express');
+const router = express.Router();
+
+const templateController = require('../controllers/templateController');
+const { authenticate, authorize, authorizeOrganization } = require('../middleware/auth');
+const { 
+  validateTemplateCreation, 
+  validateTemplateUpdate, 
+  validateTemplateRejection,
+  validateUUID,
+  validatePagination 
+} = require('../middleware/validation');
+
+// All routes require authentication
+router.use(authenticate);
+
+// Get pending approval templates (super admin and system admin only)
+router.get('/pending-approval', 
+  authorize('super_admin', 'system_admin'),
+  templateController.getPendingApprovalTemplates
+);
+
+// Organization-specific template routes
+// Get templates for an organization
+router.get('/organization/:organizationId', 
+  authorize('super_admin', 'system_admin', 'organization_admin', 'organization_user'),
+  validateUUID('organizationId'),
+  validatePagination,
+  authorizeOrganization,
+  templateController.getTemplates
+);
+
+// Create template for an organization
+router.post('/organization/:organizationId', 
+  authorize('super_admin', 'system_admin', 'organization_admin'),
+  validateUUID('organizationId'),
+  validateTemplateCreation,
+  authorizeOrganization,
+  templateController.createTemplate
+);
+
+// Get template by ID
+router.get('/:templateId', 
+  authorize('super_admin', 'system_admin', 'organization_admin', 'organization_user'),
+  validateUUID('templateId'),
+  templateController.getTemplateById
+);
+
+// Update template
+router.put('/:templateId', 
+  authorize('super_admin', 'system_admin', 'organization_admin'),
+  validateUUID('templateId'),
+  validateTemplateUpdate,
+  templateController.updateTemplate
+);
+
+// Delete template
+router.delete('/:templateId', 
+  authorize('super_admin', 'system_admin', 'organization_admin'),
+  validateUUID('templateId'),
+  templateController.deleteTemplate
+);
+
+// Submit template for approval
+router.post('/:templateId/submit-approval', 
+  authorize('super_admin', 'system_admin', 'organization_admin'),
+  validateUUID('templateId'),
+  templateController.submitForApproval
+);
+
+// Approve template (super admin and system admin only)
+router.post('/:templateId/approve', 
+  authorize('super_admin', 'system_admin'),
+  validateUUID('templateId'),
+  templateController.approveTemplate
+);
+
+// Reject template (super admin and system admin only)
+router.post('/:templateId/reject', 
+  authorize('super_admin', 'system_admin'),
+  validateUUID('templateId'),
+  validateTemplateRejection,
+  templateController.rejectTemplate
+);
+
+module.exports = router;

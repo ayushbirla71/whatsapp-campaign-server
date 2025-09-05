@@ -1,0 +1,353 @@
+{
+	"info": {
+		"name": "WhatsApp Template API Examples",
+		"description": "Template management API examples for WhatsApp Business Server",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Template Management",
+			"item": [
+				{
+					"name": "Get Organization Templates",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/templates/organization/{{organizationId}}?page=1&limit=10",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "templates", "organization", "{{organizationId}}"],
+							"query": [
+								{
+									"key": "page",
+									"value": "1"
+								},
+								{
+									"key": "limit",
+									"value": "10"
+								},
+								{
+									"key": "status",
+									"value": "draft",
+									"disabled": true
+								},
+								{
+									"key": "category",
+									"value": "MARKETING",
+									"disabled": true
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Create Marketing Template",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 201) {",
+									"    const response = pm.response.json();",
+									"    pm.environment.set('templateId', response.data.template.id);",
+									"}"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"welcome_offer\",\n    \"category\": \"MARKETING\",\n    \"language\": \"en\",\n    \"header_type\": \"TEXT\",\n    \"header_text\": \"🎉 Welcome to Our Store!\",\n    \"body_text\": \"Hi {{1}}, welcome to our store! Get {{2}}% off your first purchase with code WELCOME{{3}}. Valid until {{4}}.\",\n    \"footer_text\": \"Terms and conditions apply\",\n    \"components\": [\n        {\n            \"type\": \"HEADER\",\n            \"format\": \"TEXT\",\n            \"text\": \"🎉 Welcome to Our Store!\"\n        },\n        {\n            \"type\": \"BODY\",\n            \"text\": \"Hi {{1}}, welcome to our store! Get {{2}}% off your first purchase with code WELCOME{{3}}. Valid until {{4}}.\",\n            \"example\": {\n                \"body_text\": [\n                    [\"John\", \"20\", \"2024\", \"Dec 31, 2024\"]\n                ]\n            }\n        },\n        {\n            \"type\": \"FOOTER\",\n            \"text\": \"Terms and conditions apply\"\n        }\n    ]\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/templates/organization/{{organizationId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "templates", "organization", "{{organizationId}}"]
+						}
+					}
+				},
+				{
+					"name": "Create Authentication Template",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"otp_verification\",\n    \"category\": \"AUTHENTICATION\",\n    \"language\": \"en\",\n    \"body_text\": \"Your verification code is {{1}}. This code will expire in {{2}} minutes. Do not share this code with anyone.\",\n    \"components\": [\n        {\n            \"type\": \"BODY\",\n            \"text\": \"Your verification code is {{1}}. This code will expire in {{2}} minutes. Do not share this code with anyone.\",\n            \"example\": {\n                \"body_text\": [\n                    [\"123456\", \"5\"]\n                ]\n            }\n        }\n    ]\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/templates/organization/{{organizationId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "templates", "organization", "{{organizationId}}"]
+						}
+					}
+				},
+				{
+					"name": "Create Utility Template",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"order_confirmation\",\n    \"category\": \"UTILITY\",\n    \"language\": \"en\",\n    \"header_type\": \"TEXT\",\n    \"header_text\": \"Order Confirmed\",\n    \"body_text\": \"Hi {{1}}, your order #{{2}} has been confirmed. Total amount: ${{3}}. Estimated delivery: {{4}}.\",\n    \"footer_text\": \"Track your order on our website\",\n    \"components\": [\n        {\n            \"type\": \"HEADER\",\n            \"format\": \"TEXT\",\n            \"text\": \"Order Confirmed\"\n        },\n        {\n            \"type\": \"BODY\",\n            \"text\": \"Hi {{1}}, your order #{{2}} has been confirmed. Total amount: ${{3}}. Estimated delivery: {{4}}.\",\n            \"example\": {\n                \"body_text\": [\n                    [\"Sarah\", \"ORD123456\", \"99.99\", \"Dec 25, 2024\"]\n                ]\n            }\n        },\n        {\n            \"type\": \"FOOTER\",\n            \"text\": \"Track your order on our website\"\n        }\n    ]\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/templates/organization/{{organizationId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "templates", "organization", "{{organizationId}}"]
+						}
+					}
+				},
+				{
+					"name": "Get Template by ID",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/templates/{{templateId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "templates", "{{templateId}}"]
+						}
+					}
+				},
+				{
+					"name": "Update Template",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"body_text\": \"Hi {{1}}, welcome to our store! Get {{2}}% off your first purchase with code WELCOME{{3}}. Valid until {{4}}. Free shipping on orders over $50!\",\n    \"footer_text\": \"Terms and conditions apply. Offer expires soon!\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/templates/{{templateId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "templates", "{{templateId}}"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Approval Workflow",
+			"item": [
+				{
+					"name": "Submit Template for Approval",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 200) {",
+									"    const response = pm.response.json();",
+									"    pm.environment.set('pendingTemplateId', response.data.template.id);",
+									"}"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/templates/{{templateId}}/submit-approval",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "templates", "{{templateId}}", "submit-approval"]
+						}
+					}
+				},
+				{
+					"name": "Get Pending Approval Templates",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/templates/pending-approval",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "templates", "pending-approval"]
+						}
+					}
+				},
+				{
+					"name": "Approve Template",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/templates/{{pendingTemplateId}}/approve",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "templates", "{{pendingTemplateId}}", "approve"]
+						}
+					}
+				},
+				{
+					"name": "Reject Template",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"rejection_reason\": \"Template content does not comply with WhatsApp Business API guidelines. Please review the messaging policy and resubmit.\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/templates/{{pendingTemplateId}}/reject",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "templates", "{{pendingTemplateId}}", "reject"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Error Testing",
+			"item": [
+				{
+					"name": "Create Invalid Template (Validation Error)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"\",\n    \"category\": \"INVALID_CATEGORY\",\n    \"body_text\": \"\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/templates/organization/{{organizationId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "templates", "organization", "{{organizationId}}"]
+						}
+					}
+				},
+				{
+					"name": "Create Duplicate Template",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"welcome_offer\",\n    \"category\": \"MARKETING\",\n    \"language\": \"en\",\n    \"body_text\": \"Duplicate template test\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/templates/organization/{{organizationId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "templates", "organization", "{{organizationId}}"]
+						}
+					}
+				},
+				{
+					"name": "Get Non-existent Template",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/templates/00000000-0000-0000-0000-000000000000",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "templates", "00000000-0000-0000-0000-000000000000"]
+						}
+					}
+				}
+			]
+		}
+	],
+	"variable": [
+		{
+			"key": "baseUrl",
+			"value": "http://localhost:3000"
+		}
+	]
+}
