@@ -1,24 +1,24 @@
-const BaseModel = require('./BaseModel');
-const { parsePhoneNumber, isValidPhoneNumber } = require('libphonenumber-js');
+const BaseModel = require("./BaseModel");
+const { parsePhoneNumber, isValidPhoneNumber } = require("libphonenumber-js");
 
 class Audience extends BaseModel {
   constructor() {
-    super('audience_master');
+    super("audience_master");
   }
 
   // Normalize phone number to E.164 format
-  static normalizeMSISDN(phoneNumber, defaultCountry = 'US') {
+  static normalizeMSISDN(phoneNumber, defaultCountry = "US") {
     try {
       if (!phoneNumber) return null;
-      
+
       // Remove any non-digit characters except +
-      const cleaned = phoneNumber.replace(/[^\d+]/g, '');
-      
+      const cleaned = phoneNumber.replace(/[^\d+]/g, "");
+
       if (isValidPhoneNumber(cleaned, defaultCountry)) {
         const parsed = parsePhoneNumber(cleaned, defaultCountry);
-        return parsed.format('E.164');
+        return parsed.format("E.164");
       }
-      
+
       return null;
     } catch (error) {
       return null;
@@ -28,8 +28,8 @@ class Audience extends BaseModel {
   // Extract country code from normalized MSISDN
   static extractCountryCode(msisdn) {
     try {
-      if (!msisdn || !msisdn.startsWith('+')) return null;
-      
+      if (!msisdn || !msisdn.startsWith("+")) return null;
+
       const parsed = parsePhoneNumber(msisdn);
       return parsed.countryCallingCode;
     } catch (error) {
@@ -39,43 +39,51 @@ class Audience extends BaseModel {
 
   async createOrUpdateMasterRecord(audienceData) {
     try {
-      const normalizedMSISDN = Audience.normalizeMSISDN(audienceData.msisdn, audienceData.country_code);
-      
+      const normalizedMSISDN = Audience.normalizeMSISDN(
+        audienceData.msisdn,
+        audienceData.country_code
+      );
+
       if (!normalizedMSISDN) {
-        throw new Error('Invalid phone number format');
+        throw new Error("Invalid phone number format");
       }
 
       const countryCode = Audience.extractCountryCode(normalizedMSISDN);
-      
+
       // Check if record exists
-      const existingRecord = await this.findByMSISDNAndOrganization(normalizedMSISDN, audienceData.organization_id);
-      
+      const existingRecord = await this.findByMSISDNAndOrganization(
+        normalizedMSISDN,
+        audienceData.organization_id
+      );
+
       const recordData = {
         organization_id: audienceData.organization_id,
         name: audienceData.name,
         msisdn: normalizedMSISDN,
         country_code: countryCode,
         last_known_attributes: audienceData.attributes || {},
-        created_by: audienceData.created_by
+        created_by: audienceData.created_by,
       };
 
       if (existingRecord) {
         // Update existing record with new attributes
         const mergedAttributes = {
           ...existingRecord.last_known_attributes,
-          ...recordData.last_known_attributes
+          ...recordData.last_known_attributes,
         };
-        
+
         return await this.update(existingRecord.id, {
           name: recordData.name,
-          last_known_attributes: mergedAttributes
+          last_known_attributes: mergedAttributes,
         });
       } else {
         // Create new record
         return await super.create(recordData);
       }
     } catch (error) {
-      throw new Error(`Error creating/updating master audience record: ${error.message}`);
+      throw new Error(
+        `Error creating/updating master audience record: ${error.message}`
+      );
     }
   }
 
@@ -88,10 +96,15 @@ class Audience extends BaseModel {
         SELECT * FROM audience_master 
         WHERE msisdn = $1 AND organization_id = $2
       `;
-      const result = await this.pool.query(query, [normalizedMSISDN, organizationId]);
+      const result = await this.pool.query(query, [
+        normalizedMSISDN,
+        organizationId,
+      ]);
       return result.rows[0] || null;
     } catch (error) {
-      throw new Error(`Error finding audience by MSISDN and organization: ${error.message}`);
+      throw new Error(
+        `Error finding audience by MSISDN and organization: ${error.message}`
+      );
     }
   }
 
@@ -103,7 +116,7 @@ class Audience extends BaseModel {
         LEFT JOIN users u ON am.created_by = u.id
         WHERE am.organization_id = $1
       `;
-      
+
       const values = [organizationId];
       let paramCount = 1;
 
@@ -137,7 +150,9 @@ class Audience extends BaseModel {
       const result = await this.pool.query(query, values);
       return result.rows;
     } catch (error) {
-      throw new Error(`Error finding audience by organization: ${error.message}`);
+      throw new Error(
+        `Error finding audience by organization: ${error.message}`
+      );
     }
   }
 
@@ -151,13 +166,13 @@ class Audience extends BaseModel {
           const result = await this.createOrUpdateMasterRecord({
             ...audienceData,
             organization_id: organizationId,
-            created_by: createdBy
+            created_by: createdBy,
           });
           results.push(result);
         } catch (error) {
           errors.push({
             data: audienceData,
-            error: error.message
+            error: error.message,
           });
         }
       }
@@ -167,10 +182,12 @@ class Audience extends BaseModel {
         errors: errors,
         total_processed: audienceList.length,
         successful: results.length,
-        failed: errors.length
+        failed: errors.length,
       };
     } catch (error) {
-      throw new Error(`Error bulk creating/updating audience: ${error.message}`);
+      throw new Error(
+        `Error bulk creating/updating audience: ${error.message}`
+      );
     }
   }
 
@@ -178,35 +195,37 @@ class Audience extends BaseModel {
   async addToCampaign(campaignId, organizationId, audienceList) {
     try {
       const client = await this.pool.connect();
-      
+
       try {
-        await client.query('BEGIN');
-        
+        await client.query("BEGIN");
+
         const results = [];
         const errors = [];
 
         for (const audienceData of audienceList) {
           try {
-            const normalizedMSISDN = Audience.normalizeMSISDN(audienceData.msisdn);
-            
+            const normalizedMSISDN = Audience.normalizeMSISDN(
+              audienceData.msisdn
+            );
+
             if (!normalizedMSISDN) {
               errors.push({
                 data: audienceData,
-                error: 'Invalid phone number format'
+                error: "Invalid phone number format",
               });
               continue;
             }
 
             // Check for duplicate in campaign
             const duplicateCheck = await client.query(
-              'SELECT id FROM campaign_audience WHERE campaign_id = $1 AND msisdn = $2',
+              "SELECT id FROM campaign_audience WHERE campaign_id = $1 AND msisdn = $2",
               [campaignId, normalizedMSISDN]
             );
 
             if (duplicateCheck.rows.length > 0) {
               errors.push({
                 data: audienceData,
-                error: 'Phone number already exists in campaign'
+                error: "Phone number already exists in campaign",
               });
               continue;
             }
@@ -217,13 +236,13 @@ class Audience extends BaseModel {
               VALUES ($1, $2, $3, $4, $5)
               RETURNING *
             `;
-            
+
             const result = await client.query(insertQuery, [
               campaignId,
               organizationId,
               audienceData.name,
               normalizedMSISDN,
-              JSON.stringify(audienceData.attributes || {})
+              JSON.stringify(audienceData.attributes || {}),
             ]);
 
             results.push(result.rows[0]);
@@ -232,35 +251,33 @@ class Audience extends BaseModel {
             await this.createOrUpdateMasterRecord({
               ...audienceData,
               msisdn: normalizedMSISDN,
-              organization_id: organizationId
+              organization_id: organizationId,
             });
-
           } catch (error) {
             errors.push({
               data: audienceData,
-              error: error.message
+              error: error.message,
             });
           }
         }
 
         // Update campaign total_targeted_audience
         await client.query(
-          'UPDATE campaigns SET total_targeted_audience = (SELECT COUNT(*) FROM campaign_audience WHERE campaign_id = $1) WHERE id = $1',
+          "UPDATE campaigns SET total_targeted_audience = (SELECT COUNT(*) FROM campaign_audience WHERE campaign_id = $1) WHERE id = $1",
           [campaignId]
         );
 
-        await client.query('COMMIT');
+        await client.query("COMMIT");
 
         return {
           success: results,
           errors: errors,
           total_processed: audienceList.length,
           successful: results.length,
-          failed: errors.length
+          failed: errors.length,
         };
-
       } catch (error) {
-        await client.query('ROLLBACK');
+        await client.query("ROLLBACK");
         throw error;
       } finally {
         client.release();
@@ -276,7 +293,7 @@ class Audience extends BaseModel {
         SELECT * FROM campaign_audience 
         WHERE campaign_id = $1
       `;
-      
+
       const values = [campaignId];
       let paramCount = 1;
 
@@ -308,9 +325,12 @@ class Audience extends BaseModel {
       }
 
       const result = await this.pool.query(query, values);
-      return result.rows.map(row => ({
+      return result.rows.map((row) => ({
         ...row,
-        attributes: typeof row.attributes === 'string' ? JSON.parse(row.attributes) : row.attributes
+        attributes:
+          typeof row.attributes === "string"
+            ? JSON.parse(row.attributes)
+            : row.attributes,
       }));
     } catch (error) {
       throw new Error(`Error getting campaign audience: ${error.message}`);
@@ -321,36 +341,38 @@ class Audience extends BaseModel {
     try {
       const updateData = {
         message_status: status,
-        ...additionalData
+        ...additionalData,
       };
 
       // Set timestamp based on status
       const now = new Date();
       switch (status) {
-        case 'sent':
+        case "sent":
           updateData.sent_at = now;
           break;
-        case 'delivered':
+        case "delivered":
           updateData.delivered_at = now;
           break;
-        case 'read':
+        case "read":
           updateData.read_at = now;
           break;
-        case 'failed':
+        case "failed":
           updateData.failed_at = now;
           break;
       }
 
       const query = `
         UPDATE campaign_audience 
-        SET ${Object.keys(updateData).map((key, index) => `${key} = $${index + 2}`).join(', ')}, updated_at = NOW()
+        SET ${Object.keys(updateData)
+          .map((key, index) => `${key} = $${index + 2}`)
+          .join(", ")}, updated_at = NOW()
         WHERE id = $1
         RETURNING *
       `;
 
       const values = [campaignAudienceId, ...Object.values(updateData)];
       const result = await this.pool.query(query, values);
-      
+
       return result.rows[0];
     } catch (error) {
       throw new Error(`Error updating message status: ${error.message}`);
@@ -361,7 +383,7 @@ class Audience extends BaseModel {
     try {
       const normalizedMSISDN = Audience.normalizeMSISDN(msisdn);
       if (!normalizedMSISDN) {
-        throw new Error('Invalid phone number format');
+        throw new Error("Invalid phone number format");
       }
 
       const query = `
@@ -369,18 +391,49 @@ class Audience extends BaseModel {
         WHERE campaign_id = $1 AND msisdn = $2
         RETURNING *
       `;
-      
-      const result = await this.pool.query(query, [campaignId, normalizedMSISDN]);
-      
+
+      const result = await this.pool.query(query, [
+        campaignId,
+        normalizedMSISDN,
+      ]);
+
       // Update campaign total_targeted_audience
       await this.pool.query(
-        'UPDATE campaigns SET total_targeted_audience = (SELECT COUNT(*) FROM campaign_audience WHERE campaign_id = $1) WHERE id = $1',
+        "UPDATE campaigns SET total_targeted_audience = (SELECT COUNT(*) FROM campaign_audience WHERE campaign_id = $1) WHERE id = $1",
         [campaignId]
       );
 
       return result.rows[0];
     } catch (error) {
-      throw new Error(`Error removing audience from campaign: ${error.message}`);
+      throw new Error(
+        `Error removing audience from campaign: ${error.message}`
+      );
+    }
+  }
+
+  // Count records from specific table
+  async countFromTable(conditions = {}, tableName = "audience_master") {
+    try {
+      let query = `SELECT COUNT(*) as count FROM ${tableName}`;
+      const values = [];
+      let paramCount = 0;
+
+      if (Object.keys(conditions).length > 0) {
+        const whereConditions = [];
+        for (const [key, value] of Object.entries(conditions)) {
+          paramCount++;
+          whereConditions.push(`${key} = $${paramCount}`);
+          values.push(value);
+        }
+        query += ` WHERE ${whereConditions.join(" AND ")}`;
+      }
+
+      const result = await this.pool.query(query, values);
+      return parseInt(result.rows[0].count);
+    } catch (error) {
+      throw new Error(
+        `Error counting records from ${tableName}: ${error.message}`
+      );
     }
   }
 
@@ -389,15 +442,15 @@ class Audience extends BaseModel {
     const errors = [];
 
     if (!audienceData.name || audienceData.name.trim().length === 0) {
-      errors.push('Name is required');
+      errors.push("Name is required");
     }
 
     if (!audienceData.msisdn || audienceData.msisdn.trim().length === 0) {
-      errors.push('Phone number is required');
+      errors.push("Phone number is required");
     }
 
     if (audienceData.msisdn && !Audience.normalizeMSISDN(audienceData.msisdn)) {
-      errors.push('Invalid phone number format');
+      errors.push("Invalid phone number format");
     }
 
     return errors;

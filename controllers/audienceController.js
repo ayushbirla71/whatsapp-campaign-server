@@ -201,7 +201,7 @@ const getCampaignAudience = asyncHandler(async (req, res) => {
   if (search) filters.search = search;
 
   const audience = await Audience.getCampaignAudience(campaignId, filters);
-  const total = await Audience.count(
+  const total = await Audience.countFromTable(
     { campaign_id: campaignId },
     "campaign_audience"
   );
