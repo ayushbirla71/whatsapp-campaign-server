@@ -9,6 +9,8 @@ CREATE TYPE organization_status AS ENUM ('active', 'inactive', 'suspended');
 CREATE TYPE template_status AS ENUM ('draft', 'pending_approval', 'approved', 'rejected', 'active', 'paused');
 CREATE TYPE template_category AS ENUM ('AUTHENTICATION', 'MARKETING', 'UTILITY');
 CREATE TYPE template_language AS ENUM ('en', 'en_US', 'es', 'es_ES', 'pt_BR', 'hi', 'ar', 'fr', 'de', 'it', 'ja', 'ko', 'ru', 'zh_CN', 'zh_TW');
+CREATE TYPE campaign_status AS ENUM ('draft', 'pending_approval', 'approved', 'rejected', 'scheduled', 'running', 'paused', 'completed', 'cancelled');
+CREATE TYPE campaign_type AS ENUM ('immediate', 'scheduled', 'recurring');
 
 -- Organizations table
 CREATE TABLE organizations (
@@ -115,6 +117,109 @@ CREATE TABLE templates (
     CONSTRAINT templates_whatsapp_id_unique UNIQUE (whatsapp_template_id)
 );
 
+-- Audience Master Table (Global audience database)
+CREATE TABLE audience_master (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    organization_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+
+    -- Contact Information
+    name VARCHAR(255) NOT NULL,
+    msisdn TEXT NOT NULL, -- Normalized E.164 format
+    country_code VARCHAR(5),
+
+    -- Additional Attributes (flexible JSON storage)
+    last_known_attributes JSONB DEFAULT '{}',
+
+    -- Metadata
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    created_by UUID REFERENCES users(id) ON DELETE SET NULL,
+
+    -- Constraints
+    CONSTRAINT audience_master_msisdn_org_unique UNIQUE (organization_id, msisdn)
+);
+
+-- Campaigns table
+CREATE TABLE campaigns (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    organization_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+    template_id UUID NOT NULL REFERENCES templates(id) ON DELETE RESTRICT,
+
+    -- Campaign Details
+    name VARCHAR(255) NOT NULL,
+    description TEXT,
+    campaign_type campaign_type DEFAULT 'immediate',
+
+    -- Scheduling
+    scheduled_at TIMESTAMP WITH TIME ZONE,
+    buffer_hours INTEGER DEFAULT 48, -- Default 2 day buffer
+
+    -- Approval Workflow
+    status campaign_status DEFAULT 'draft',
+    submitted_for_approval_at TIMESTAMP WITH TIME ZONE,
+    approved_by UUID REFERENCES users(id) ON DELETE SET NULL,
+    approved_at TIMESTAMP WITH TIME ZONE,
+    rejected_by UUID REFERENCES users(id) ON DELETE SET NULL,
+    rejected_at TIMESTAMP WITH TIME ZONE,
+    rejection_reason TEXT,
+
+    -- Audience and Statistics
+    total_targeted_audience INTEGER DEFAULT 0,
+    total_sent INTEGER DEFAULT 0,
+    total_delivered INTEGER DEFAULT 0,
+    total_read INTEGER DEFAULT 0,
+    total_replied INTEGER DEFAULT 0,
+    total_failed INTEGER DEFAULT 0,
+
+    -- Campaign Execution
+    started_at TIMESTAMP WITH TIME ZONE,
+    completed_at TIMESTAMP WITH TIME ZONE,
+
+    -- Metadata
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    created_by UUID NOT NULL REFERENCES users(id) ON DELETE SET NULL,
+
+    -- Constraints
+    CONSTRAINT campaigns_name_org_unique UNIQUE (name, organization_id),
+    CONSTRAINT campaigns_scheduled_at_check CHECK (
+        (campaign_type = 'immediate' AND scheduled_at IS NULL) OR
+        (campaign_type IN ('scheduled', 'recurring') AND scheduled_at IS NOT NULL)
+    )
+);
+
+-- Campaign Audience Association Table
+CREATE TABLE campaign_audience (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    campaign_id UUID NOT NULL REFERENCES campaigns(id) ON DELETE CASCADE,
+    organization_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+
+    -- Contact Information (denormalized for campaign execution)
+    name VARCHAR(255) NOT NULL,
+    msisdn TEXT NOT NULL, -- Normalized E.164 format
+
+    -- Campaign-specific attributes (from upload)
+    attributes JSONB DEFAULT '{}',
+
+    -- Message Status
+    message_status VARCHAR(50) DEFAULT 'pending', -- pending, sent, delivered, read, failed
+    sent_at TIMESTAMP WITH TIME ZONE,
+    delivered_at TIMESTAMP WITH TIME ZONE,
+    read_at TIMESTAMP WITH TIME ZONE,
+    failed_at TIMESTAMP WITH TIME ZONE,
+    failure_reason TEXT,
+
+    -- WhatsApp Message ID
+    whatsapp_message_id VARCHAR(255),
+
+    -- Metadata
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+
+    -- Constraints
+    CONSTRAINT campaign_audience_msisdn_unique UNIQUE (campaign_id, msisdn)
+);
+
 -- Refresh tokens table for JWT management
 CREATE TABLE refresh_tokens (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -157,6 +262,18 @@ CREATE INDEX idx_templates_category ON templates(category);
 CREATE INDEX idx_templates_language ON templates(language);
 CREATE INDEX idx_templates_whatsapp_status ON templates(whatsapp_status);
 CREATE INDEX idx_templates_created_by ON templates(created_by);
+CREATE INDEX idx_audience_master_organization_id ON audience_master(organization_id);
+CREATE INDEX idx_audience_master_msisdn ON audience_master(msisdn);
+CREATE INDEX idx_audience_master_name ON audience_master(name);
+CREATE INDEX idx_campaigns_organization_id ON campaigns(organization_id);
+CREATE INDEX idx_campaigns_template_id ON campaigns(template_id);
+CREATE INDEX idx_campaigns_status ON campaigns(status);
+CREATE INDEX idx_campaigns_scheduled_at ON campaigns(scheduled_at);
+CREATE INDEX idx_campaigns_created_by ON campaigns(created_by);
+CREATE INDEX idx_campaign_audience_campaign_id ON campaign_audience(campaign_id);
+CREATE INDEX idx_campaign_audience_organization_id ON campaign_audience(organization_id);
+CREATE INDEX idx_campaign_audience_msisdn ON campaign_audience(msisdn);
+CREATE INDEX idx_campaign_audience_message_status ON campaign_audience(message_status);
 
 -- Create trigger function for updating updated_at timestamp
 CREATE OR REPLACE FUNCTION update_updated_at_column()
@@ -175,4 +292,13 @@ CREATE TRIGGER update_organizations_updated_at BEFORE UPDATE ON organizations
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 CREATE TRIGGER update_templates_updated_at BEFORE UPDATE ON templates
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER update_audience_master_updated_at BEFORE UPDATE ON audience_master
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER update_campaigns_updated_at BEFORE UPDATE ON campaigns
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER update_campaign_audience_updated_at BEFORE UPDATE ON campaign_audience
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();

@@ -927,6 +927,493 @@
           }
         }
       ]
+    },
+    {
+      "name": "Campaigns",
+      "item": [
+        {
+          "name": "Get Organization Campaigns",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/campaigns/organization/{{organizationId}}?page=1&limit=10",
+              "host": ["{{baseUrl}}"],
+              "path": [
+                "api",
+                "campaigns",
+                "organization",
+                "{{organizationId}}"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                },
+                {
+                  "key": "status",
+                  "value": "draft",
+                  "disabled": true
+                },
+                {
+                  "key": "campaign_type",
+                  "value": "immediate",
+                  "disabled": true
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Create Campaign",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    const response = pm.response.json();",
+                  "    pm.environment.set('campaignId', response.data.campaign.id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"name\": \"Welcome Campaign\",\n    \"description\": \"Welcome new customers with special offers\",\n    \"template_id\": \"{{templateId}}\",\n    \"campaign_type\": \"scheduled\",\n    \"buffer_hours\": 48\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/campaigns/organization/{{organizationId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "campaigns", "organization", "{{organizationId}}"]
+            }
+          }
+        },
+        {
+          "name": "Get Campaign by ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/campaigns/{{campaignId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "campaigns", "{{campaignId}}"]
+            }
+          }
+        },
+        {
+          "name": "Update Campaign",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"description\": \"Updated welcome campaign with enhanced offers\",\n    \"buffer_hours\": 72\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/campaigns/{{campaignId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "campaigns", "{{campaignId}}"]
+            }
+          }
+        },
+        {
+          "name": "Add Audience to Campaign",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"audience_list\": [\n        {\n            \"name\": \"John Doe\",\n            \"msisdn\": \"+1234567890\",\n            \"attributes\": {\n                \"account_no\": \"ACC001\",\n                \"city\": \"New York\",\n                \"age\": \"30\"\n            }\n        },\n        {\n            \"name\": \"Jane Smith\",\n            \"msisdn\": \"+1234567891\",\n            \"attributes\": {\n                \"account_no\": \"ACC002\",\n                \"city\": \"Los Angeles\",\n                \"age\": \"25\"\n            }\n        },\n        {\n            \"name\": \"Bob Johnson\",\n            \"msisdn\": \"+1234567892\",\n            \"attributes\": {\n                \"account_no\": \"ACC003\",\n                \"city\": \"Chicago\",\n                \"age\": \"35\"\n            }\n        }\n    ]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/campaigns/{{campaignId}}/audience",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "campaigns", "{{campaignId}}", "audience"]
+            }
+          }
+        },
+        {
+          "name": "Get Campaign Audience",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/campaigns/{{campaignId}}/audience?page=1&limit=10",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "campaigns", "{{campaignId}}", "audience"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                },
+                {
+                  "key": "message_status",
+                  "value": "pending",
+                  "disabled": true
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Submit Campaign for Approval",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    pm.environment.set('pendingCampaignId', response.data.campaign.id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/campaigns/{{campaignId}}/submit-approval",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "campaigns", "{{campaignId}}", "submit-approval"]
+            }
+          }
+        },
+        {
+          "name": "Get Pending Approval Campaigns",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/campaigns/pending-approval",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "campaigns", "pending-approval"]
+            }
+          }
+        },
+        {
+          "name": "Approve Campaign",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/campaigns/{{pendingCampaignId}}/approve",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "campaigns", "{{pendingCampaignId}}", "approve"]
+            }
+          }
+        },
+        {
+          "name": "Reject Campaign",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"rejection_reason\": \"Campaign content needs review. Please ensure compliance with WhatsApp Business API guidelines.\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/campaigns/{{pendingCampaignId}}/reject",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "campaigns", "{{pendingCampaignId}}", "reject"]
+            }
+          }
+        },
+        {
+          "name": "Start Campaign",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/campaigns/{{campaignId}}/start",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "campaigns", "{{campaignId}}", "start"]
+            }
+          }
+        },
+        {
+          "name": "Pause Campaign",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/campaigns/{{campaignId}}/pause",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "campaigns", "{{campaignId}}", "pause"]
+            }
+          }
+        },
+        {
+          "name": "Cancel Campaign",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/campaigns/{{campaignId}}/cancel",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "campaigns", "{{campaignId}}", "cancel"]
+            }
+          }
+        },
+        {
+          "name": "Get Campaign Statistics",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/campaigns/organization/{{organizationId}}/stats",
+              "host": ["{{baseUrl}}"],
+              "path": [
+                "api",
+                "campaigns",
+                "organization",
+                "{{organizationId}}",
+                "stats"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Remove Audience from Campaign",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"msisdn\": \"+1234567890\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/campaigns/{{campaignId}}/audience",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "campaigns", "{{campaignId}}", "audience"]
+            }
+          }
+        },
+        {
+          "name": "Delete Campaign",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/campaigns/{{campaignId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "campaigns", "{{campaignId}}"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Audience",
+      "item": [
+        {
+          "name": "Get Master Audience",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/audience/organization/{{organizationId}}?page=1&limit=10",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "audience", "organization", "{{organizationId}}"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                },
+                {
+                  "key": "search",
+                  "value": "John",
+                  "disabled": true
+                },
+                {
+                  "key": "country_code",
+                  "value": "1",
+                  "disabled": true
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Create Master Audience Record",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"name\": \"Alice Johnson\",\n    \"msisdn\": \"+1234567893\",\n    \"country_code\": \"1\",\n    \"attributes\": {\n        \"account_no\": \"ACC004\",\n        \"city\": \"Miami\",\n        \"age\": \"28\",\n        \"subscription\": \"premium\"\n    }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/audience/organization/{{organizationId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "audience", "organization", "{{organizationId}}"]
+            }
+          }
+        },
+        {
+          "name": "Bulk Create Master Audience",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"audience_list\": [\n        {\n            \"name\": \"Michael Brown\",\n            \"msisdn\": \"+1234567894\",\n            \"attributes\": {\n                \"account_no\": \"ACC005\",\n                \"city\": \"Seattle\",\n                \"age\": \"32\",\n                \"subscription\": \"basic\"\n            }\n        },\n        {\n            \"name\": \"Sarah Wilson\",\n            \"msisdn\": \"+1234567895\",\n            \"attributes\": {\n                \"account_no\": \"ACC006\",\n                \"city\": \"Denver\",\n                \"age\": \"27\",\n                \"subscription\": \"premium\"\n            }\n        },\n        {\n            \"name\": \"David Lee\",\n            \"msisdn\": \"+1234567896\",\n            \"attributes\": {\n                \"account_no\": \"ACC007\",\n                \"city\": \"Austin\",\n                \"age\": \"29\",\n                \"subscription\": \"standard\"\n            }\n        }\n    ]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/audience/organization/{{organizationId}}/bulk",
+              "host": ["{{baseUrl}}"],
+              "path": [
+                "api",
+                "audience",
+                "organization",
+                "{{organizationId}}",
+                "bulk"
+              ]
+            }
+          }
+        }
+      ]
     }
   ],
   "variable": [
