@@ -1,14 +1,17 @@
-const BaseModel = require('./BaseModel');
+const BaseModel = require("./BaseModel");
 
 class Template extends BaseModel {
   constructor() {
-    super('templates');
+    super("templates");
   }
 
   async create(templateData) {
     try {
       // Ensure components is stored as JSON
-      if (templateData.components && typeof templateData.components === 'object') {
+      if (
+        templateData.components &&
+        typeof templateData.components === "object"
+      ) {
         templateData.components = JSON.stringify(templateData.components);
       }
 
@@ -21,7 +24,10 @@ class Template extends BaseModel {
   async update(id, templateData) {
     try {
       // Ensure components is stored as JSON
-      if (templateData.components && typeof templateData.components === 'object') {
+      if (
+        templateData.components &&
+        typeof templateData.components === "object"
+      ) {
         templateData.components = JSON.stringify(templateData.components);
       }
 
@@ -43,7 +49,7 @@ class Template extends BaseModel {
         LEFT JOIN users r ON t.rejected_by = r.id
         WHERE t.organization_id = $1
       `;
-      
+
       const values = [organizationId];
       let paramCount = 1;
 
@@ -87,9 +93,11 @@ class Template extends BaseModel {
       }
 
       const result = await this.pool.query(query, values);
-      return result.rows.map(row => this.parseTemplate(row));
+      return result.rows.map((row) => this.parseTemplate(row));
     } catch (error) {
-      throw new Error(`Error finding templates by organization: ${error.message}`);
+      throw new Error(
+        `Error finding templates by organization: ${error.message}`
+      );
     }
   }
 
@@ -104,36 +112,40 @@ class Template extends BaseModel {
         WHERE t.status = 'pending_approval'
         ORDER BY t.submitted_for_approval_at ASC
       `;
-      
+
       const result = await this.pool.query(query);
-      return result.rows.map(row => this.parseTemplate(row));
+      return result.rows.map((row) => this.parseTemplate(row));
     } catch (error) {
-      throw new Error(`Error finding pending approval templates: ${error.message}`);
+      throw new Error(
+        `Error finding pending approval templates: ${error.message}`
+      );
     }
   }
 
   async submitForApproval(id, userId) {
     try {
       const updateData = {
-        status: 'pending_approval',
-        submitted_for_approval_at: new Date()
+        status: "pending_approval",
+        submitted_for_approval_at: new Date(),
       };
 
       return await this.update(id, updateData);
     } catch (error) {
-      throw new Error(`Error submitting template for approval: ${error.message}`);
+      throw new Error(
+        `Error submitting template for approval: ${error.message}`
+      );
     }
   }
 
   async approveTemplate(id, approvedBy) {
     try {
       const updateData = {
-        status: 'approved',
+        status: "approved",
         approved_by: approvedBy,
         approved_at: new Date(),
         rejected_by: null,
         rejected_at: null,
-        rejection_reason: null
+        rejection_reason: null,
       };
 
       return await this.update(id, updateData);
@@ -145,12 +157,12 @@ class Template extends BaseModel {
   async rejectTemplate(id, rejectedBy, rejectionReason) {
     try {
       const updateData = {
-        status: 'rejected',
+        status: "rejected",
         rejected_by: rejectedBy,
         rejected_at: new Date(),
         rejection_reason: rejectionReason,
         approved_by: null,
-        approved_at: null
+        approved_at: null,
       };
 
       return await this.update(id, updateData);
@@ -159,10 +171,15 @@ class Template extends BaseModel {
     }
   }
 
-  async updateWhatsAppStatus(id, whatsappStatus, whatsappTemplateId = null, qualityScore = null) {
+  async updateWhatsAppStatus(
+    id,
+    whatsappStatus,
+    whatsappTemplateId = null,
+    qualityScore = null
+  ) {
     try {
       const updateData = {
-        whatsapp_status: whatsappStatus
+        whatsapp_status: whatsappStatus,
       };
 
       if (whatsappTemplateId) {
@@ -182,15 +199,15 @@ class Template extends BaseModel {
   async updateUsageStats(id, stats) {
     try {
       const updateData = {};
-      
+
       if (stats.sent_count !== undefined) {
         updateData.sent_count = stats.sent_count;
       }
-      
+
       if (stats.delivered_count !== undefined) {
         updateData.delivered_count = stats.delivered_count;
       }
-      
+
       if (stats.read_count !== undefined) {
         updateData.read_count = stats.read_count;
       }
@@ -201,16 +218,38 @@ class Template extends BaseModel {
     }
   }
 
-  async findByNameAndOrganization(name, organizationId, language = 'en') {
+  async findByNameAndOrganization(name, organizationId, language = "en") {
     try {
       const query = `
-        SELECT * FROM templates 
+        SELECT * FROM templates
         WHERE name = $1 AND organization_id = $2 AND language = $3
       `;
-      const result = await this.pool.query(query, [name, organizationId, language]);
+      const result = await this.pool.query(query, [
+        name,
+        organizationId,
+        language,
+      ]);
       return result.rows[0] ? this.parseTemplate(result.rows[0]) : null;
     } catch (error) {
-      throw new Error(`Error finding template by name and organization: ${error.message}`);
+      throw new Error(
+        `Error finding template by name and organization: ${error.message}`
+      );
+    }
+  }
+
+  async findByWhatsAppTemplateId(whatsappTemplateId) {
+    try {
+      const query = `
+        SELECT * FROM templates
+        WHERE whatsapp_template_id = $1
+        LIMIT 1
+      `;
+      const result = await this.pool.query(query, [whatsappTemplateId]);
+      return result.rows[0] ? this.parseTemplate(result.rows[0]) : null;
+    } catch (error) {
+      throw new Error(
+        `Error finding template by WhatsApp template ID: ${error.message}`
+      );
     }
   }
 
@@ -222,7 +261,7 @@ class Template extends BaseModel {
         ORDER BY created_at DESC
       `;
       const result = await this.pool.query(query, [organizationId]);
-      return result.rows.map(row => this.parseTemplate(row));
+      return result.rows.map((row) => this.parseTemplate(row));
     } catch (error) {
       throw new Error(`Error finding active templates: ${error.message}`);
     }
@@ -253,9 +292,9 @@ class Template extends BaseModel {
     if (!templateRow) return null;
 
     const template = { ...templateRow };
-    
+
     // Parse components JSON
-    if (template.components && typeof template.components === 'string') {
+    if (template.components && typeof template.components === "string") {
       try {
         template.components = JSON.parse(template.components);
       } catch (error) {
@@ -271,35 +310,57 @@ class Template extends BaseModel {
     const errors = [];
 
     if (!templateData.name || templateData.name.trim().length === 0) {
-      errors.push('Template name is required');
+      errors.push("Template name is required");
     }
 
     if (!templateData.category) {
-      errors.push('Template category is required');
+      errors.push("Template category is required");
     }
 
     if (!templateData.body_text || templateData.body_text.trim().length === 0) {
-      errors.push('Template body text is required');
+      errors.push("Template body text is required");
     }
 
     if (!templateData.organization_id) {
-      errors.push('Organization ID is required');
+      errors.push("Organization ID is required");
     }
 
     if (!templateData.created_by) {
-      errors.push('Created by user ID is required');
+      errors.push("Created by user ID is required");
     }
 
     // Validate category
-    const validCategories = ['AUTHENTICATION', 'MARKETING', 'UTILITY'];
-    if (templateData.category && !validCategories.includes(templateData.category)) {
-      errors.push('Invalid template category');
+    const validCategories = ["AUTHENTICATION", "MARKETING", "UTILITY"];
+    if (
+      templateData.category &&
+      !validCategories.includes(templateData.category)
+    ) {
+      errors.push("Invalid template category");
     }
 
     // Validate language
-    const validLanguages = ['en', 'en_US', 'es', 'es_ES', 'pt_BR', 'hi', 'ar', 'fr', 'de', 'it', 'ja', 'ko', 'ru', 'zh_CN', 'zh_TW'];
-    if (templateData.language && !validLanguages.includes(templateData.language)) {
-      errors.push('Invalid template language');
+    const validLanguages = [
+      "en",
+      "en_US",
+      "es",
+      "es_ES",
+      "pt_BR",
+      "hi",
+      "ar",
+      "fr",
+      "de",
+      "it",
+      "ja",
+      "ko",
+      "ru",
+      "zh_CN",
+      "zh_TW",
+    ];
+    if (
+      templateData.language &&
+      !validLanguages.includes(templateData.language)
+    ) {
+      errors.push("Invalid template language");
     }
 
     return errors;

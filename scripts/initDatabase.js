@@ -112,6 +112,7 @@ class DatabaseInitializer {
         DROP TABLE IF EXISTS campaign_audience CASCADE;
         DROP TABLE IF EXISTS campaigns CASCADE;
         DROP TABLE IF EXISTS audience_master CASCADE;
+        DROP TABLE IF EXISTS asset_generate_files CASCADE;
         DROP TABLE IF EXISTS templates CASCADE;
         DROP TABLE IF EXISTS users CASCADE;
         DROP TABLE IF EXISTS organizations CASCADE;
@@ -122,6 +123,8 @@ class DatabaseInitializer {
         DROP TYPE IF EXISTS template_language CASCADE;
         DROP TYPE IF EXISTS campaign_status CASCADE;
         DROP TYPE IF EXISTS campaign_type CASCADE;
+        DROP TYPE IF EXISTS asset_generation_status CASCADE;
+        DROP TYPE IF EXISTS message_status_extended CASCADE;
         DROP FUNCTION IF EXISTS update_updated_at_column() CASCADE;
       `;
 

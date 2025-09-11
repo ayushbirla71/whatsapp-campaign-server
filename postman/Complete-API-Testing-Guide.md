@@ -1,6 +1,6 @@
 # Complete WhatsApp Server API Testing Guide
 
-This guide provides a comprehensive workflow for testing all APIs in the WhatsApp Business Server using the complete Postman collection.
+This guide provides a comprehensive workflow for testing all APIs in the WhatsApp Business Server using the complete Postman collection. The collection includes **42 API endpoints** covering authentication, user management, organizations, templates, campaigns, audience management, and asset generation.
 
 ## Setup Instructions
 
@@ -489,3 +489,140 @@ This comprehensive collection tests all aspects of the WhatsApp Business Server 
 - **Audit Trail**: Complete logging of campaign lifecycle events
 
 This enhanced collection now provides end-to-end testing for a complete WhatsApp Business campaign management system!
+
+## 🎨 Asset Generation Features:
+
+### **Personalized Asset Creation**
+
+- **Python Code Storage**: Store and version Python files for asset generation
+- **Template Integration**: Associate asset files with specific WhatsApp templates
+- **Multi-Asset Support**: Generate images, videos, documents, and other media types
+- **Version Control**: Track multiple versions of asset generation files with rollback capability
+- **Personalization Engine**: Use audience attributes to create unique assets per recipient
+
+### **Asset Generation Workflow**
+
+1. **Create Asset Files** - Upload Python code that generates personalized assets
+2. **Version Management** - Maintain multiple versions with automatic versioning (1.0, 1.1, 2.0)
+3. **Template Association** - Link asset files to approved WhatsApp Business templates
+4. **Campaign Enhancement** - Campaigns automatically trigger asset generation before message delivery
+5. **Error Handling** - Retry logic and comprehensive error tracking for failed generations
+
+### **Sample Asset Generation Code**
+
+```python
+def generate_asset(attributes, name, msisdn, temp_dir):
+    """Generate personalized image asset"""
+    try:
+        # Create personalized image using PIL
+        width, height = 800, 400
+        image = Image.new('RGB', (width, height), color='#f0f8ff')
+        draw = ImageDraw.Draw(image)
+
+        # Add personalized text
+        greeting = attributes.get('greeting', 'Hello')
+        offer = attributes.get('offer', '20% off')
+        text = f'{greeting} {name}! Get {offer} on your next purchase!'
+
+        # Center and draw text
+        font = ImageFont.load_default()
+        bbox = draw.textbbox((0, 0), text, font=font)
+        text_width = bbox[2] - bbox[0]
+        x = (width - text_width) // 2
+        y = height // 2 - 20
+        draw.text((x, y), text, fill='#333333', font=font)
+
+        # Save image
+        safe_name = name.replace(' ', '_').replace('/', '_')
+        image_path = os.path.join(temp_dir, f'welcome_{safe_name}.png')
+        image.save(image_path)
+
+        return {'image': image_path}
+    except Exception as e:
+        print(f'Error generating asset: {e}')
+        return None
+```
+
+### **Enhanced Campaign Lifecycle**
+
+The campaign workflow now includes asset generation:
+
+1. **Draft** → Create campaign with template and audience
+2. **Pending Approval** → Submit for admin approval
+3. **Approved** → Admin approves campaign
+4. **Asset Generation** → System generates personalized assets for each audience member
+5. **Asset Generated** → All assets created successfully
+6. **Ready to Launch** → Campaign ready for execution
+7. **Running** → Messages sent with personalized assets
+8. **Completed** → Campaign finished with full statistics
+
+### **Asset Generation API Endpoints**
+
+- `GET /api/asset-files/organization/:id` - Get organization asset files
+- `GET /api/asset-files/template/:id` - Get template asset files
+- `POST /api/asset-files/template/:id` - Create asset file
+- `PUT /api/asset-files/:id` - Update asset file
+- `POST /api/asset-files/template/:id/version` - Create asset file version
+- `GET /api/asset-files/template/:id/versions/:fileName` - Get file versions
+- `DELETE /api/asset-files/:id` - Deactivate asset file
+
+### **WhatsApp Business API Integration**
+
+- `POST /api/templates/organization/:id/sync-whatsapp` - Sync templates from WhatsApp Business API
+
+**Total: 50+ API endpoints** providing complete coverage including advanced asset generation capabilities and WhatsApp Business API integration!
+
+## 🔗 **WhatsApp Business API Sync Features:**
+
+### **Template Synchronization**
+
+- **Direct API Integration**: Connect to WhatsApp Business API using organization credentials
+- **Automatic Template Import**: Fetch all approved templates from WhatsApp Business Account
+- **Smart Mapping**: Transform WhatsApp API format to internal template structure
+- **Duplicate Handling**: Update existing templates or create new ones based on WhatsApp template ID
+- **Status Synchronization**: Sync approval status, quality scores, and rejection reasons
+- **Credential Validation**: Verify WhatsApp Business Account access before sync
+- **Error Handling**: Comprehensive error tracking and retry logic
+
+### **Sync Process Workflow**
+
+1. **Validate Credentials** → Verify WhatsApp Business Account access
+2. **Fetch Templates** → Get all message templates from WhatsApp API
+3. **Transform Data** → Convert WhatsApp format to internal structure
+4. **Check Duplicates** → Match by WhatsApp template ID
+5. **Update/Create** → Update existing or create new templates
+6. **Track Results** → Log sync statistics and errors
+
+### **Security & Access Control**
+
+- **Admin Only Access**: Only Super Admin and System Admin can trigger sync
+- **Organization Isolation**: Sync only affects the specified organization
+- **Credential Security**: WhatsApp tokens stored encrypted in organization settings
+- **Audit Trail**: Complete logging of sync operations and results
+
+### **Sample Sync Response**
+
+```json
+{
+  "success": true,
+  "message": "Successfully synced 5 templates from WhatsApp Business API",
+  "data": {
+    "synced_count": 5,
+    "updated_count": 2,
+    "created_count": 3,
+    "errors": [],
+    "templates": [
+      {
+        "action": "created",
+        "template": {
+          "id": "uuid-123",
+          "name": "welcome_message",
+          "status": "approved",
+          "whatsapp_template_id": "12345678",
+          "whatsapp_status": "APPROVED"
+        }
+      }
+    ]
+  }
+}
+```

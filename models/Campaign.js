@@ -1,14 +1,17 @@
-const BaseModel = require('./BaseModel');
+const BaseModel = require("./BaseModel");
 
 class Campaign extends BaseModel {
   constructor() {
-    super('campaigns');
+    super("campaigns");
   }
 
   async create(campaignData) {
     try {
       // Set default scheduled_at if not provided for scheduled campaigns
-      if (campaignData.campaign_type === 'scheduled' && !campaignData.scheduled_at) {
+      if (
+        campaignData.campaign_type === "scheduled" &&
+        !campaignData.scheduled_at
+      ) {
         const bufferHours = campaignData.buffer_hours || 48;
         const scheduledDate = new Date();
         scheduledDate.setHours(scheduledDate.getHours() + bufferHours);
@@ -35,7 +38,7 @@ class Campaign extends BaseModel {
         LEFT JOIN users r ON c.rejected_by = r.id
         WHERE c.organization_id = $1
       `;
-      
+
       const values = [organizationId];
       let paramCount = 1;
 
@@ -75,7 +78,9 @@ class Campaign extends BaseModel {
       const result = await this.pool.query(query, values);
       return result.rows;
     } catch (error) {
-      throw new Error(`Error finding campaigns by organization: ${error.message}`);
+      throw new Error(
+        `Error finding campaigns by organization: ${error.message}`
+      );
     }
   }
 
@@ -92,36 +97,40 @@ class Campaign extends BaseModel {
         WHERE c.status = 'pending_approval'
         ORDER BY c.submitted_for_approval_at ASC
       `;
-      
+
       const result = await this.pool.query(query);
       return result.rows;
     } catch (error) {
-      throw new Error(`Error finding pending approval campaigns: ${error.message}`);
+      throw new Error(
+        `Error finding pending approval campaigns: ${error.message}`
+      );
     }
   }
 
   async submitForApproval(id, userId) {
     try {
       const updateData = {
-        status: 'pending_approval',
-        submitted_for_approval_at: new Date()
+        status: "pending_approval",
+        submitted_for_approval_at: new Date(),
       };
 
       return await this.update(id, updateData);
     } catch (error) {
-      throw new Error(`Error submitting campaign for approval: ${error.message}`);
+      throw new Error(
+        `Error submitting campaign for approval: ${error.message}`
+      );
     }
   }
 
   async approveCampaign(id, approvedBy) {
     try {
       const updateData = {
-        status: 'approved',
+        status: "approved",
         approved_by: approvedBy,
         approved_at: new Date(),
         rejected_by: null,
         rejected_at: null,
-        rejection_reason: null
+        rejection_reason: null,
       };
 
       return await this.update(id, updateData);
@@ -133,12 +142,12 @@ class Campaign extends BaseModel {
   async rejectCampaign(id, rejectedBy, rejectionReason) {
     try {
       const updateData = {
-        status: 'rejected',
+        status: "rejected",
         rejected_by: rejectedBy,
         rejected_at: new Date(),
         rejection_reason: rejectionReason,
         approved_by: null,
-        approved_at: null
+        approved_at: null,
       };
 
       return await this.update(id, updateData);
@@ -150,27 +159,27 @@ class Campaign extends BaseModel {
   async updateStatistics(id, stats) {
     try {
       const updateData = {};
-      
+
       if (stats.total_targeted_audience !== undefined) {
         updateData.total_targeted_audience = stats.total_targeted_audience;
       }
-      
+
       if (stats.total_sent !== undefined) {
         updateData.total_sent = stats.total_sent;
       }
-      
+
       if (stats.total_delivered !== undefined) {
         updateData.total_delivered = stats.total_delivered;
       }
-      
+
       if (stats.total_read !== undefined) {
         updateData.total_read = stats.total_read;
       }
-      
+
       if (stats.total_replied !== undefined) {
         updateData.total_replied = stats.total_replied;
       }
-      
+
       if (stats.total_failed !== undefined) {
         updateData.total_failed = stats.total_failed;
       }
@@ -184,8 +193,8 @@ class Campaign extends BaseModel {
   async startCampaign(id) {
     try {
       const updateData = {
-        status: 'running',
-        started_at: new Date()
+        status: "running",
+        started_at: new Date(),
       };
 
       return await this.update(id, updateData);
@@ -197,8 +206,8 @@ class Campaign extends BaseModel {
   async completeCampaign(id) {
     try {
       const updateData = {
-        status: 'completed',
-        completed_at: new Date()
+        status: "completed",
+        completed_at: new Date(),
       };
 
       return await this.update(id, updateData);
@@ -210,7 +219,7 @@ class Campaign extends BaseModel {
   async pauseCampaign(id) {
     try {
       const updateData = {
-        status: 'paused'
+        status: "paused",
       };
 
       return await this.update(id, updateData);
@@ -222,12 +231,128 @@ class Campaign extends BaseModel {
   async cancelCampaign(id) {
     try {
       const updateData = {
-        status: 'cancelled'
+        status: "cancelled",
       };
 
       return await this.update(id, updateData);
     } catch (error) {
       throw new Error(`Error cancelling campaign: ${error.message}`);
+    }
+  }
+
+  // Asset Generation Methods
+  async startAssetGeneration(id) {
+    try {
+      const updateData = {
+        status: "asset_generation",
+        asset_generation_started_at: new Date(),
+        asset_generation_status: "processing",
+        asset_generation_retry_count: 0,
+        asset_generation_last_error: null,
+      };
+
+      return await this.update(id, updateData);
+    } catch (error) {
+      throw new Error(`Error starting asset generation: ${error.message}`);
+    }
+  }
+
+  async completeAssetGeneration(id, progress = {}) {
+    try {
+      const updateData = {
+        status: "asset_generated",
+        asset_generation_completed_at: new Date(),
+        asset_generation_status: "generated",
+        asset_generation_progress: progress,
+      };
+
+      return await this.update(id, updateData);
+    } catch (error) {
+      throw new Error(`Error completing asset generation: ${error.message}`);
+    }
+  }
+
+  async failAssetGeneration(id, errorMessage, retryCount = 0) {
+    try {
+      const updateData = {
+        asset_generation_status: "failed",
+        asset_generation_last_error: errorMessage,
+        asset_generation_retry_count: retryCount,
+      };
+
+      return await this.update(id, updateData);
+    } catch (error) {
+      throw new Error(`Error failing asset generation: ${error.message}`);
+    }
+  }
+
+  async updateAssetGenerationProgress(id, progress) {
+    try {
+      const updateData = {
+        asset_generation_progress: progress,
+      };
+
+      return await this.update(id, updateData);
+    } catch (error) {
+      throw new Error(
+        `Error updating asset generation progress: ${error.message}`
+      );
+    }
+  }
+
+  async markReadyToLaunch(id) {
+    try {
+      const updateData = {
+        status: "ready_to_launch",
+      };
+
+      return await this.update(id, updateData);
+    } catch (error) {
+      throw new Error(
+        `Error marking campaign ready to launch: ${error.message}`
+      );
+    }
+  }
+
+  async findCampaignsForAssetGeneration() {
+    try {
+      const query = `
+        SELECT c.*, t.name as template_name, o.name as organization_name
+        FROM campaigns c
+        LEFT JOIN templates t ON c.template_id = t.id
+        LEFT JOIN organizations o ON c.organization_id = o.id
+        WHERE c.status = 'approved'
+        AND (c.asset_generation_status IS NULL OR c.asset_generation_status = 'pending')
+        ORDER BY c.approved_at ASC
+      `;
+
+      const result = await this.pool.query(query);
+      return result.rows;
+    } catch (error) {
+      throw new Error(
+        `Error finding campaigns for asset generation: ${error.message}`
+      );
+    }
+  }
+
+  async findFailedAssetGenerations(maxRetries = 3) {
+    try {
+      const query = `
+        SELECT c.*, t.name as template_name, o.name as organization_name
+        FROM campaigns c
+        LEFT JOIN templates t ON c.template_id = t.id
+        LEFT JOIN organizations o ON c.organization_id = o.id
+        WHERE c.asset_generation_status = 'failed'
+        AND c.asset_generation_retry_count < $1
+        ORDER BY c.asset_generation_started_at ASC
+      `;
+
+      const result = await this.pool.query(query, [maxRetries]);
+      return result.rows;
+    } catch (error) {
+      throw new Error(
+        `Error finding failed asset generations: ${error.message}`
+      );
     }
   }
 
@@ -242,7 +367,7 @@ class Campaign extends BaseModel {
         AND c.scheduled_at <= NOW()
         ORDER BY c.scheduled_at ASC
       `;
-      
+
       const result = await this.pool.query(query);
       return result.rows;
     } catch (error) {
@@ -259,7 +384,9 @@ class Campaign extends BaseModel {
       const result = await this.pool.query(query, [name, organizationId]);
       return result.rows[0] || null;
     } catch (error) {
-      throw new Error(`Error finding campaign by name and organization: ${error.message}`);
+      throw new Error(
+        `Error finding campaign by name and organization: ${error.message}`
+      );
     }
   }
 
@@ -291,35 +418,44 @@ class Campaign extends BaseModel {
     const errors = [];
 
     if (!campaignData.name || campaignData.name.trim().length === 0) {
-      errors.push('Campaign name is required');
+      errors.push("Campaign name is required");
     }
 
     if (!campaignData.template_id) {
-      errors.push('Template ID is required');
+      errors.push("Template ID is required");
     }
 
     if (!campaignData.organization_id) {
-      errors.push('Organization ID is required');
+      errors.push("Organization ID is required");
     }
 
     if (!campaignData.created_by) {
-      errors.push('Created by user ID is required');
+      errors.push("Created by user ID is required");
     }
 
     // Validate campaign type
-    const validTypes = ['immediate', 'scheduled', 'recurring'];
-    if (campaignData.campaign_type && !validTypes.includes(campaignData.campaign_type)) {
-      errors.push('Invalid campaign type');
+    const validTypes = ["immediate", "scheduled", "recurring"];
+    if (
+      campaignData.campaign_type &&
+      !validTypes.includes(campaignData.campaign_type)
+    ) {
+      errors.push("Invalid campaign type");
     }
 
     // Validate scheduled campaigns have scheduled_at
-    if (campaignData.campaign_type === 'scheduled' && !campaignData.scheduled_at) {
-      errors.push('Scheduled campaigns must have a scheduled date');
+    if (
+      campaignData.campaign_type === "scheduled" &&
+      !campaignData.scheduled_at
+    ) {
+      errors.push("Scheduled campaigns must have a scheduled date");
     }
 
     // Validate scheduled_at is in the future
-    if (campaignData.scheduled_at && new Date(campaignData.scheduled_at) <= new Date()) {
-      errors.push('Scheduled date must be in the future');
+    if (
+      campaignData.scheduled_at &&
+      new Date(campaignData.scheduled_at) <= new Date()
+    ) {
+      errors.push("Scheduled date must be in the future");
     }
 
     return errors;

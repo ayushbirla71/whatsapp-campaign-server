@@ -15,6 +15,7 @@ const organizationRoutes = require("./routes/organizations");
 const templateRoutes = require("./routes/templates");
 const campaignRoutes = require("./routes/campaigns");
 const audienceRoutes = require("./routes/audience");
+const assetGenerateFilesRoutes = require("./routes/assetGenerateFiles");
 
 // Create Express app
 const app = express();
@@ -89,6 +90,7 @@ app.use("/api/organizations", organizationRoutes);
 app.use("/api/templates", templateRoutes);
 app.use("/api/campaigns", campaignRoutes);
 app.use("/api/audience", audienceRoutes);
+app.use("/api/asset-files", assetGenerateFilesRoutes);
 
 // API documentation endpoint
 app.get("/api", (req, res) => {
@@ -133,6 +135,8 @@ app.get("/api", (req, res) => {
         "POST /api/templates/:id/submit-approval": "Submit for approval",
         "POST /api/templates/:id/approve": "Approve template",
         "POST /api/templates/:id/reject": "Reject template",
+        "POST /api/templates/organization/:id/sync-whatsapp":
+          "Sync from WhatsApp API",
       },
       campaigns: {
         "GET /api/campaigns/pending-approval": "Get pending approval campaigns",
@@ -157,6 +161,17 @@ app.get("/api", (req, res) => {
         "GET /api/audience/organization/:id": "Get master audience",
         "POST /api/audience/organization/:id": "Create audience record",
         "POST /api/audience/organization/:id/bulk": "Bulk create audience",
+      },
+      "asset-files": {
+        "GET /api/asset-files/organization/:id": "Get organization asset files",
+        "GET /api/asset-files/template/:id": "Get template asset files",
+        "POST /api/asset-files/template/:id": "Create asset file",
+        "POST /api/asset-files/template/:id/version":
+          "Create asset file version",
+        "GET /api/asset-files/template/:id/versions/:fileName":
+          "Get file versions",
+        "PUT /api/asset-files/:id": "Update asset file",
+        "DELETE /api/asset-files/:id": "Deactivate asset file",
       },
     },
   });

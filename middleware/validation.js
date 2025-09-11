@@ -472,6 +472,88 @@ const validateRemoveAudience = [
   handleValidationErrors,
 ];
 
+// Asset Generation Files validation rules
+const validateAssetFileCreation = [
+  body("file_name")
+    .trim()
+    .isLength({ min: 1, max: 255 })
+    .withMessage("File name is required and must be less than 255 characters")
+    .matches(/^[a-zA-Z_][a-zA-Z0-9_]*\.py$/)
+    .withMessage(
+      "File name must be a valid Python filename (e.g., asset_generator.py)"
+    ),
+  body("file_content")
+    .trim()
+    .isLength({ min: 1 })
+    .withMessage("File content is required")
+    .custom((value) => {
+      if (!value.includes("def generate_asset(")) {
+        throw new Error("File content must contain a generate_asset function");
+      }
+      return true;
+    }),
+  body("description")
+    .optional()
+    .trim()
+    .isLength({ max: 1000 })
+    .withMessage("Description must be less than 1000 characters"),
+  body("version")
+    .optional()
+    .trim()
+    .matches(/^\d+\.\d+$/)
+    .withMessage("Version must be in format X.Y (e.g., 1.0)"),
+  handleValidationErrors,
+];
+
+const validateAssetFileUpdate = [
+  body("file_content")
+    .optional()
+    .trim()
+    .isLength({ min: 1 })
+    .withMessage("File content cannot be empty")
+    .custom((value) => {
+      if (value && !value.includes("def generate_asset(")) {
+        throw new Error("File content must contain a generate_asset function");
+      }
+      return true;
+    }),
+  body("description")
+    .optional()
+    .trim()
+    .isLength({ max: 1000 })
+    .withMessage("Description must be less than 1000 characters"),
+  body("is_active")
+    .optional()
+    .isBoolean()
+    .withMessage("is_active must be a boolean"),
+  handleValidationErrors,
+];
+
+const validateAssetFileVersion = [
+  body("file_name")
+    .trim()
+    .isLength({ min: 1, max: 255 })
+    .withMessage("File name is required and must be less than 255 characters")
+    .matches(/^[a-zA-Z_][a-zA-Z0-9_]*\.py$/)
+    .withMessage("File name must be a valid Python filename"),
+  body("file_content")
+    .trim()
+    .isLength({ min: 1 })
+    .withMessage("File content is required")
+    .custom((value) => {
+      if (!value.includes("def generate_asset(")) {
+        throw new Error("File content must contain a generate_asset function");
+      }
+      return true;
+    }),
+  body("description")
+    .optional()
+    .trim()
+    .isLength({ max: 1000 })
+    .withMessage("Description must be less than 1000 characters"),
+  handleValidationErrors,
+];
+
 module.exports = {
   handleValidationErrors,
   validateUserRegistration,
@@ -492,4 +574,7 @@ module.exports = {
   validateBulkAudience,
   validateMessageStatusUpdate,
   validateRemoveAudience,
+  validateAssetFileCreation,
+  validateAssetFileUpdate,
+  validateAssetFileVersion,
 };

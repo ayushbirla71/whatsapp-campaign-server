@@ -9,8 +9,10 @@ CREATE TYPE organization_status AS ENUM ('active', 'inactive', 'suspended');
 CREATE TYPE template_status AS ENUM ('draft', 'pending_approval', 'approved', 'rejected', 'active', 'paused');
 CREATE TYPE template_category AS ENUM ('AUTHENTICATION', 'MARKETING', 'UTILITY');
 CREATE TYPE template_language AS ENUM ('en', 'en_US', 'es', 'es_ES', 'pt_BR', 'hi', 'ar', 'fr', 'de', 'it', 'ja', 'ko', 'ru', 'zh_CN', 'zh_TW');
-CREATE TYPE campaign_status AS ENUM ('draft', 'pending_approval', 'approved', 'rejected', 'scheduled', 'running', 'paused', 'completed', 'cancelled');
+CREATE TYPE campaign_status AS ENUM ('draft', 'pending_approval', 'approved', 'rejected', 'scheduled', 'asset_generation', 'asset_generated', 'ready_to_launch', 'running', 'paused', 'completed', 'cancelled');
 CREATE TYPE campaign_type AS ENUM ('immediate', 'scheduled', 'recurring');
+CREATE TYPE asset_generation_status AS ENUM ('pending', 'processing', 'generated', 'failed');
+CREATE TYPE message_status_extended AS ENUM ('pending', 'asset_generating', 'asset_generated', 'ready_to_send', 'sent', 'delivered', 'read', 'failed');
 
 -- Organizations table
 CREATE TABLE organizations (
@@ -83,7 +85,7 @@ CREATE TABLE templates (
     header_type VARCHAR(50), -- TEXT, IMAGE, VIDEO, DOCUMENT
     header_text TEXT,
     header_media_url TEXT,
-    body_text TEXT NOT NULL,
+    body_text TEXT,
     footer_text TEXT,
 
     -- Template Components (stored as JSON)
@@ -97,10 +99,13 @@ CREATE TABLE templates (
     rejected_by UUID REFERENCES users(id) ON DELETE SET NULL,
     rejected_at TIMESTAMP WITH TIME ZONE,
     rejection_reason TEXT,
+    whatsapp_rejected_reason TEXT,
 
     -- WhatsApp API Status
     whatsapp_status VARCHAR(50), -- PENDING, APPROVED, REJECTED, DISABLED
-    whatsapp_quality_score VARCHAR(20), -- GREEN, YELLOW, RED
+    whatsapp_quality_score JSONB, -- Full quality score object from WhatsApp API
+    whatsapp_created_time TIMESTAMP WITH TIME ZONE, -- When template was created in WhatsApp
+    whatsapp_updated_time TIMESTAMP WITH TIME ZONE, -- When template was last updated in WhatsApp
 
     -- Usage Statistics
     sent_count INTEGER DEFAULT 0,
@@ -112,9 +117,32 @@ CREATE TABLE templates (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     created_by UUID NOT NULL REFERENCES users(id) ON DELETE SET NULL,
 
+    -- WhatsApp Sync Metadata
+    synced_at TIMESTAMP WITH TIME ZONE,
+    synced_by UUID REFERENCES users(id) ON DELETE SET NULL,
+
     -- Constraints
     CONSTRAINT templates_name_org_unique UNIQUE (name, organization_id, language),
     CONSTRAINT templates_whatsapp_id_unique UNIQUE (whatsapp_template_id)
+);
+
+-- Asset Generation Files Table
+CREATE TABLE asset_generate_files (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    template_id UUID NOT NULL REFERENCES templates(id) ON DELETE CASCADE,
+    file_name VARCHAR(255) NOT NULL,
+    file_content TEXT NOT NULL,
+    description TEXT,
+    version VARCHAR(50) DEFAULT '1.0',
+    is_active BOOLEAN DEFAULT true,
+
+    -- Metadata
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    created_by UUID REFERENCES users(id) ON DELETE SET NULL,
+
+    -- Constraints
+    CONSTRAINT asset_files_template_filename_unique UNIQUE (template_id, file_name)
 );
 
 -- Audience Master Table (Global audience database)
@@ -175,6 +203,14 @@ CREATE TABLE campaigns (
     started_at TIMESTAMP WITH TIME ZONE,
     completed_at TIMESTAMP WITH TIME ZONE,
 
+    -- Asset Generation
+    asset_generation_started_at TIMESTAMP WITH TIME ZONE,
+    asset_generation_completed_at TIMESTAMP WITH TIME ZONE,
+    asset_generation_status asset_generation_status,
+    asset_generation_retry_count INTEGER DEFAULT 0,
+    asset_generation_last_error TEXT,
+    asset_generation_progress JSONB DEFAULT '{}',
+
     -- Metadata
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
@@ -202,12 +238,20 @@ CREATE TABLE campaign_audience (
     attributes JSONB DEFAULT '{}',
 
     -- Message Status
-    message_status VARCHAR(50) DEFAULT 'pending', -- pending, sent, delivered, read, failed
+    message_status message_status_extended DEFAULT 'pending',
     sent_at TIMESTAMP WITH TIME ZONE,
     delivered_at TIMESTAMP WITH TIME ZONE,
     read_at TIMESTAMP WITH TIME ZONE,
     failed_at TIMESTAMP WITH TIME ZONE,
     failure_reason TEXT,
+
+    -- Asset Generation
+    asset_generation_status asset_generation_status,
+    generated_asset_urls JSONB DEFAULT '{}',
+    asset_generation_retry_count INTEGER DEFAULT 0,
+    asset_generation_last_error TEXT,
+    asset_generation_started_at TIMESTAMP WITH TIME ZONE,
+    asset_generation_completed_at TIMESTAMP WITH TIME ZONE,
 
     -- WhatsApp Message ID
     whatsapp_message_id VARCHAR(255),
@@ -274,6 +318,10 @@ CREATE INDEX idx_campaign_audience_campaign_id ON campaign_audience(campaign_id)
 CREATE INDEX idx_campaign_audience_organization_id ON campaign_audience(organization_id);
 CREATE INDEX idx_campaign_audience_msisdn ON campaign_audience(msisdn);
 CREATE INDEX idx_campaign_audience_message_status ON campaign_audience(message_status);
+CREATE INDEX idx_asset_generate_files_template_id ON asset_generate_files(template_id);
+CREATE INDEX idx_asset_generate_files_is_active ON asset_generate_files(is_active);
+CREATE INDEX idx_campaigns_asset_generation_status ON campaigns(asset_generation_status);
+CREATE INDEX idx_campaign_audience_asset_generation_status ON campaign_audience(asset_generation_status);
 
 -- Create trigger function for updating updated_at timestamp
 CREATE OR REPLACE FUNCTION update_updated_at_column()
@@ -301,4 +349,7 @@ CREATE TRIGGER update_campaigns_updated_at BEFORE UPDATE ON campaigns
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 CREATE TRIGGER update_campaign_audience_updated_at BEFORE UPDATE ON campaign_audience
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER update_asset_generate_files_updated_at BEFORE UPDATE ON asset_generate_files
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();

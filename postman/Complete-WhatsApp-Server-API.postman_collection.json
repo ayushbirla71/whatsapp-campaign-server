@@ -910,6 +910,53 @@
           }
         },
         {
+          "name": "Sync Templates from WhatsApp API",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    console.log('Sync Results:', response.data);",
+                  "    ",
+                  "    // Save first synced template ID if available",
+                  "    if (response.data.templates && response.data.templates.length > 0) {",
+                  "        const firstTemplate = response.data.templates[0].template;",
+                  "        pm.environment.set('syncedTemplateId', firstTemplate.id);",
+                  "        console.log('Saved synced template ID:', firstTemplate.id);",
+                  "    }",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/templates/organization/{{organizationId}}/sync-whatsapp",
+              "host": ["{{baseUrl}}"],
+              "path": [
+                "api",
+                "templates",
+                "organization",
+                "{{organizationId}}",
+                "sync-whatsapp"
+              ]
+            }
+          }
+        },
+        {
           "name": "Delete Template",
           "request": {
             "method": "DELETE",
@@ -1410,6 +1457,229 @@
                 "{{organizationId}}",
                 "bulk"
               ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Asset Generation Files",
+      "item": [
+        {
+          "name": "Get Organization Asset Files",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/asset-files/organization/{{organizationId}}?page=1&limit=10",
+              "host": ["{{baseUrl}}"],
+              "path": [
+                "api",
+                "asset-files",
+                "organization",
+                "{{organizationId}}"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                },
+                {
+                  "key": "is_active",
+                  "value": "true",
+                  "disabled": true
+                },
+                {
+                  "key": "template_id",
+                  "value": "{{templateId}}",
+                  "disabled": true
+                },
+                {
+                  "key": "search",
+                  "value": "generator",
+                  "disabled": true
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Template Asset Files",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/asset-files/template/{{templateId}}?include_inactive=false",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "asset-files", "template", "{{templateId}}"],
+              "query": [
+                {
+                  "key": "include_inactive",
+                  "value": "false"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Create Asset Generation File",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    const response = pm.response.json();",
+                  "    pm.environment.set('assetFileId', response.data.asset_file.id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"file_name\": \"personalized_image_generator.py\",\n    \"description\": \"Generates personalized welcome images with customer name and offer details\",\n    \"version\": \"1.0\",\n    \"file_content\": \"# Personalized Image Generator\\nimport os\\nfrom PIL import Image, ImageDraw, ImageFont\\nimport json\\n\\ndef generate_asset(attributes, name, msisdn, temp_dir):\\n    \\\"\\\"\\\"Generate personalized image asset\\\"\\\"\\\"\\n    try:\\n        # Create personalized image\\n        width, height = 800, 400\\n        image = Image.new('RGB', (width, height), color='#f0f8ff')\\n        draw = ImageDraw.Draw(image)\\n        \\n        # Add personalized text\\n        greeting = attributes.get('greeting', 'Hello')\\n        offer = attributes.get('offer', '20% off')\\n        text = f'{greeting} {name}! Get {offer} on your next purchase!'\\n        \\n        try:\\n            font = ImageFont.truetype('arial.ttf', 32)\\n        except:\\n            font = ImageFont.load_default()\\n        \\n        # Center the text\\n        bbox = draw.textbbox((0, 0), text, font=font)\\n        text_width = bbox[2] - bbox[0]\\n        x = (width - text_width) // 2\\n        y = height // 2 - 20\\n        \\n        draw.text((x, y), text, fill='#333333', font=font)\\n        \\n        # Add account info if available\\n        if 'account_no' in attributes:\\n            account_text = f'Account: {attributes[\\\"account_no\\\"]}'\\n            draw.text((50, height - 50), account_text, fill='#666666', font=font)\\n        \\n        # Save image\\n        safe_name = name.replace(' ', '_').replace('/', '_')\\n        image_path = os.path.join(temp_dir, f'welcome_{safe_name}.png')\\n        image.save(image_path)\\n        \\n        return {'image': image_path}\\n    except Exception as e:\\n        print(f'Error generating asset: {e}')\\n        return None\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/asset-files/template/{{templateId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "asset-files", "template", "{{templateId}}"]
+            }
+          }
+        },
+        {
+          "name": "Update Asset File",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"description\": \"Updated: Generates enhanced personalized welcome images with customer name, offer details, and branding\",\n    \"file_content\": \"# Enhanced Personalized Image Generator\\nimport os\\nfrom PIL import Image, ImageDraw, ImageFont\\nimport json\\n\\ndef generate_asset(attributes, name, msisdn, temp_dir):\\n    \\\"\\\"\\\"Generate enhanced personalized image asset\\\"\\\"\\\"\\n    try:\\n        # Create personalized image with gradient background\\n        width, height = 800, 400\\n        image = Image.new('RGB', (width, height), color='#4a90e2')\\n        draw = ImageDraw.Draw(image)\\n        \\n        # Add gradient effect (simplified)\\n        for y in range(height):\\n            color_value = int(255 * (1 - y / height * 0.3))\\n            draw.line([(0, y), (width, y)], fill=(74, 144, color_value))\\n        \\n        # Add personalized text\\n        greeting = attributes.get('greeting', 'Hello')\\n        offer = attributes.get('offer', '20% off')\\n        city = attributes.get('city', '')\\n        \\n        main_text = f'{greeting} {name}!'\\n        offer_text = f'Exclusive {offer} just for you'\\n        location_text = f'Available in {city}' if city else ''\\n        \\n        try:\\n            title_font = ImageFont.truetype('arial.ttf', 40)\\n            subtitle_font = ImageFont.truetype('arial.ttf', 28)\\n            small_font = ImageFont.truetype('arial.ttf', 20)\\n        except:\\n            title_font = ImageFont.load_default()\\n            subtitle_font = ImageFont.load_default()\\n            small_font = ImageFont.load_default()\\n        \\n        # Draw main text\\n        bbox = draw.textbbox((0, 0), main_text, font=title_font)\\n        text_width = bbox[2] - bbox[0]\\n        x = (width - text_width) // 2\\n        draw.text((x, 100), main_text, fill='white', font=title_font)\\n        \\n        # Draw offer text\\n        bbox = draw.textbbox((0, 0), offer_text, font=subtitle_font)\\n        text_width = bbox[2] - bbox[0]\\n        x = (width - text_width) // 2\\n        draw.text((x, 180), offer_text, fill='#ffeb3b', font=subtitle_font)\\n        \\n        # Draw location if available\\n        if location_text:\\n            bbox = draw.textbbox((0, 0), location_text, font=small_font)\\n            text_width = bbox[2] - bbox[0]\\n            x = (width - text_width) // 2\\n            draw.text((x, 250), location_text, fill='#e0e0e0', font=small_font)\\n        \\n        # Add account info\\n        if 'account_no' in attributes:\\n            account_text = f'Account: {attributes[\\\"account_no\\\"]}'\\n            draw.text((50, height - 50), account_text, fill='white', font=small_font)\\n        \\n        # Save image\\n        safe_name = name.replace(' ', '_').replace('/', '_')\\n        image_path = os.path.join(temp_dir, f'welcome_enhanced_{safe_name}.png')\\n        image.save(image_path)\\n        \\n        return {'image': image_path}\\n    except Exception as e:\\n        print(f'Error generating enhanced asset: {e}')\\n        return None\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/asset-files/{{assetFileId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "asset-files", "{{assetFileId}}"]
+            }
+          }
+        },
+        {
+          "name": "Create Asset File Version",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    const response = pm.response.json();",
+                  "    pm.environment.set('assetFileVersionId', response.data.asset_file.id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"file_name\": \"personalized_image_generator.py\",\n    \"description\": \"Version 2.0: Added video generation capability and enhanced personalization\",\n    \"file_content\": \"# Advanced Personalized Asset Generator v2.0\\nimport os\\nfrom PIL import Image, ImageDraw, ImageFont\\nimport json\\n\\ndef generate_asset(attributes, name, msisdn, temp_dir):\\n    \\\"\\\"\\\"Generate multiple personalized assets (image + video thumbnail)\\\"\\\"\\\"\\n    try:\\n        assets = {}\\n        \\n        # Generate personalized image\\n        width, height = 800, 400\\n        image = Image.new('RGB', (width, height), color='#2c3e50')\\n        draw = ImageDraw.Draw(image)\\n        \\n        # Create modern design\\n        # Add header bar\\n        draw.rectangle([(0, 0), (width, 80)], fill='#3498db')\\n        \\n        # Add personalized content\\n        greeting = attributes.get('greeting', 'Welcome')\\n        offer = attributes.get('offer', 'Special Offer')\\n        subscription = attributes.get('subscription', 'standard')\\n        \\n        try:\\n            header_font = ImageFont.truetype('arial.ttf', 24)\\n            title_font = ImageFont.truetype('arial.ttf', 36)\\n            body_font = ImageFont.truetype('arial.ttf', 20)\\n        except:\\n            header_font = ImageFont.load_default()\\n            title_font = ImageFont.load_default()\\n            body_font = ImageFont.load_default()\\n        \\n        # Header text\\n        draw.text((20, 25), f'{greeting}, {name}!', fill='white', font=header_font)\\n        \\n        # Main content\\n        main_text = f'Your {subscription.title()} Benefits'\\n        draw.text((50, 120), main_text, fill='white', font=title_font)\\n        \\n        # Offer details\\n        offer_text = f'🎉 {offer}'\\n        draw.text((50, 180), offer_text, fill='#f39c12', font=body_font)\\n        \\n        # Additional info based on attributes\\n        y_pos = 220\\n        if 'city' in attributes:\\n            city_text = f'📍 Available in {attributes[\\\"city\\\"]}'\\n            draw.text((50, y_pos), city_text, fill='#ecf0f1', font=body_font)\\n            y_pos += 30\\n        \\n        if 'age' in attributes:\\n            age_group = 'Young Professional' if int(attributes.get('age', 25)) < 30 else 'Experienced Professional'\\n            age_text = f'👤 {age_group} Package'\\n            draw.text((50, y_pos), age_text, fill='#ecf0f1', font=body_font)\\n            y_pos += 30\\n        \\n        # Footer\\n        if 'account_no' in attributes:\\n            account_text = f'Account: {attributes[\\\"account_no\\\"]}'\\n            draw.text((20, height - 40), account_text, fill='#95a5a6', font=body_font)\\n        \\n        # Save main image\\n        safe_name = name.replace(' ', '_').replace('/', '_')\\n        image_path = os.path.join(temp_dir, f'personalized_v2_{safe_name}.png')\\n        image.save(image_path)\\n        assets['image'] = image_path\\n        \\n        # Generate thumbnail for video (placeholder)\\n        thumb_image = image.resize((400, 200))\\n        thumb_draw = ImageDraw.Draw(thumb_image)\\n        # Add play button overlay\\n        play_button_size = 40\\n        play_x = (400 - play_button_size) // 2\\n        play_y = (200 - play_button_size) // 2\\n        thumb_draw.ellipse([play_x, play_y, play_x + play_button_size, play_y + play_button_size], fill='rgba(255,255,255,0.8)')\\n        thumb_draw.polygon([play_x + 15, play_y + 10, play_x + 15, play_y + 30, play_x + 30, play_y + 20], fill='#3498db')\\n        \\n        thumb_path = os.path.join(temp_dir, f'video_thumb_{safe_name}.png')\\n        thumb_image.save(thumb_path)\\n        assets['video_thumbnail'] = thumb_path\\n        \\n        return assets\\n    except Exception as e:\\n        print(f'Error generating v2 assets: {e}')\\n        return None\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/asset-files/template/{{templateId}}/version",
+              "host": ["{{baseUrl}}"],
+              "path": [
+                "api",
+                "asset-files",
+                "template",
+                "{{templateId}}",
+                "version"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get File Versions",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/asset-files/template/{{templateId}}/versions/personalized_image_generator.py",
+              "host": ["{{baseUrl}}"],
+              "path": [
+                "api",
+                "asset-files",
+                "template",
+                "{{templateId}}",
+                "versions",
+                "personalized_image_generator.py"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Deactivate Asset File",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/asset-files/{{assetFileId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "asset-files", "{{assetFileId}}"]
             }
           }
         }

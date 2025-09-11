@@ -359,6 +359,12 @@ class Audience extends BaseModel {
         case "failed":
           updateData.failed_at = now;
           break;
+        case "asset_generating":
+          updateData.asset_generation_started_at = now;
+          break;
+        case "asset_generated":
+          updateData.asset_generation_completed_at = now;
+          break;
       }
 
       const query = `
@@ -376,6 +382,130 @@ class Audience extends BaseModel {
       return result.rows[0];
     } catch (error) {
       throw new Error(`Error updating message status: ${error.message}`);
+    }
+  }
+
+  // Asset Generation Methods for Campaign Audience
+  async startAssetGenerationForAudience(campaignAudienceId) {
+    try {
+      const updateData = {
+        asset_generation_status: "processing",
+        asset_generation_started_at: new Date(),
+        asset_generation_retry_count: 0,
+        asset_generation_last_error: null,
+        message_status: "asset_generating",
+      };
+
+      const query = `
+        UPDATE campaign_audience
+        SET asset_generation_status = $2,
+            asset_generation_started_at = $3,
+            asset_generation_retry_count = $4,
+            asset_generation_last_error = $5,
+            message_status = $6,
+            updated_at = NOW()
+        WHERE id = $1
+        RETURNING *
+      `;
+
+      const values = [
+        campaignAudienceId,
+        updateData.asset_generation_status,
+        updateData.asset_generation_started_at,
+        updateData.asset_generation_retry_count,
+        updateData.asset_generation_last_error,
+        updateData.message_status,
+      ];
+
+      const result = await this.pool.query(query, values);
+      return result.rows[0];
+    } catch (error) {
+      throw new Error(
+        `Error starting asset generation for audience: ${error.message}`
+      );
+    }
+  }
+
+  async completeAssetGenerationForAudience(campaignAudienceId, assetUrls) {
+    try {
+      const updateData = {
+        asset_generation_status: "generated",
+        asset_generation_completed_at: new Date(),
+        generated_asset_urls: JSON.stringify(assetUrls),
+        message_status: "asset_generated",
+      };
+
+      const query = `
+        UPDATE campaign_audience
+        SET asset_generation_status = $2,
+            asset_generation_completed_at = $3,
+            generated_asset_urls = $4,
+            message_status = $5,
+            updated_at = NOW()
+        WHERE id = $1
+        RETURNING *
+      `;
+
+      const values = [
+        campaignAudienceId,
+        updateData.asset_generation_status,
+        updateData.asset_generation_completed_at,
+        updateData.generated_asset_urls,
+        updateData.message_status,
+      ];
+
+      const result = await this.pool.query(query, values);
+      return result.rows[0];
+    } catch (error) {
+      throw new Error(
+        `Error completing asset generation for audience: ${error.message}`
+      );
+    }
+  }
+
+  async failAssetGenerationForAudience(campaignAudienceId, errorMessage) {
+    try {
+      // Get current retry count
+      const currentRecord = await this.pool.query(
+        "SELECT asset_generation_retry_count FROM campaign_audience WHERE id = $1",
+        [campaignAudienceId]
+      );
+
+      const retryCount =
+        (currentRecord.rows[0]?.asset_generation_retry_count || 0) + 1;
+
+      const updateData = {
+        asset_generation_status: "failed",
+        asset_generation_last_error: errorMessage,
+        asset_generation_retry_count: retryCount,
+        message_status: "failed",
+      };
+
+      const query = `
+        UPDATE campaign_audience
+        SET asset_generation_status = $2,
+            asset_generation_last_error = $3,
+            asset_generation_retry_count = $4,
+            message_status = $5,
+            updated_at = NOW()
+        WHERE id = $1
+        RETURNING *
+      `;
+
+      const values = [
+        campaignAudienceId,
+        updateData.asset_generation_status,
+        updateData.asset_generation_last_error,
+        updateData.asset_generation_retry_count,
+        updateData.message_status,
+      ];
+
+      const result = await this.pool.query(query, values);
+      return result.rows[0];
+    } catch (error) {
+      throw new Error(
+        `Error failing asset generation for audience: ${error.message}`
+      );
     }
   }
 
@@ -434,6 +564,83 @@ class Audience extends BaseModel {
       throw new Error(
         `Error counting records from ${tableName}: ${error.message}`
       );
+    }
+  }
+
+  async findAudienceForAssetGeneration(campaignId, limit = 100) {
+    try {
+      const query = `
+        SELECT * FROM campaign_audience
+        WHERE campaign_id = $1
+        AND (asset_generation_status IS NULL OR asset_generation_status = 'pending')
+        AND message_status = 'pending'
+        ORDER BY created_at ASC
+        LIMIT $2
+      `;
+
+      const result = await this.pool.query(query, [campaignId, limit]);
+      return result.rows.map((row) => ({
+        ...row,
+        attributes:
+          typeof row.attributes === "string"
+            ? JSON.parse(row.attributes)
+            : row.attributes,
+        generated_asset_urls:
+          typeof row.generated_asset_urls === "string"
+            ? JSON.parse(row.generated_asset_urls)
+            : row.generated_asset_urls,
+      }));
+    } catch (error) {
+      throw new Error(
+        `Error finding audience for asset generation: ${error.message}`
+      );
+    }
+  }
+
+  async findFailedAssetGenerationAudience(campaignId, maxRetries = 3) {
+    try {
+      const query = `
+        SELECT * FROM campaign_audience
+        WHERE campaign_id = $1
+        AND asset_generation_status = 'failed'
+        AND asset_generation_retry_count < $2
+        ORDER BY asset_generation_started_at ASC
+      `;
+
+      const result = await this.pool.query(query, [campaignId, maxRetries]);
+      return result.rows.map((row) => ({
+        ...row,
+        attributes:
+          typeof row.attributes === "string"
+            ? JSON.parse(row.attributes)
+            : row.attributes,
+        generated_asset_urls:
+          typeof row.generated_asset_urls === "string"
+            ? JSON.parse(row.generated_asset_urls)
+            : row.generated_asset_urls,
+      }));
+    } catch (error) {
+      throw new Error(
+        `Error finding failed asset generation audience: ${error.message}`
+      );
+    }
+  }
+
+  async markAudienceReadyToSend(campaignId) {
+    try {
+      const query = `
+        UPDATE campaign_audience
+        SET message_status = 'ready_to_send', updated_at = NOW()
+        WHERE campaign_id = $1
+        AND asset_generation_status = 'generated'
+        AND message_status = 'asset_generated'
+        RETURNING *
+      `;
+
+      const result = await this.pool.query(query, [campaignId]);
+      return result.rows;
+    } catch (error) {
+      throw new Error(`Error marking audience ready to send: ${error.message}`);
     }
   }
 
