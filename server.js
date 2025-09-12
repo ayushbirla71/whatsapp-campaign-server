@@ -16,6 +16,7 @@ const templateRoutes = require("./routes/templates");
 const campaignRoutes = require("./routes/campaigns");
 const audienceRoutes = require("./routes/audience");
 const assetGenerateFilesRoutes = require("./routes/assetGenerateFiles");
+const schedulerRoutes = require("./routes/scheduler");
 
 // Create Express app
 const app = express();
@@ -91,6 +92,7 @@ app.use("/api/templates", templateRoutes);
 app.use("/api/campaigns", campaignRoutes);
 app.use("/api/audience", audienceRoutes);
 app.use("/api/asset-files", assetGenerateFilesRoutes);
+app.use("/api/scheduler", schedulerRoutes);
 
 // API documentation endpoint
 app.get("/api", (req, res) => {
@@ -173,6 +175,13 @@ app.get("/api", (req, res) => {
         "PUT /api/asset-files/:id": "Update asset file",
         "DELETE /api/asset-files/:id": "Deactivate asset file",
       },
+      scheduler: {
+        "POST /api/scheduler/start": "Start campaign scheduler",
+        "POST /api/scheduler/stop": "Stop campaign scheduler",
+        "GET /api/scheduler/status": "Get scheduler status",
+        "POST /api/scheduler/check-campaigns": "Manual campaign check",
+        "GET /api/scheduler/queue-health": "Get SQS queue health",
+      },
     },
   });
 });
@@ -208,6 +217,22 @@ const server = app.listen(PORT, () => {
 2. Change default admin password after first login
 3. Configure your PostgreSQL database settings in .env
   `);
+
+  // Auto-start campaign scheduler if enabled
+  if (process.env.AUTO_START_SCHEDULER === "true") {
+    const campaignSchedulerService = require("./services/campaignSchedulerService");
+    campaignSchedulerService
+      .startScheduler()
+      .then(() => {
+        console.log("🕒 Campaign scheduler auto-started successfully");
+      })
+      .catch((error) => {
+        console.error(
+          "❌ Failed to auto-start campaign scheduler:",
+          error.message
+        );
+      });
+  }
 });
 
 // Graceful shutdown

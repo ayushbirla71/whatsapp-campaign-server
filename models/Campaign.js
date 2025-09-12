@@ -314,6 +314,42 @@ class Campaign extends BaseModel {
     }
   }
 
+  // Find campaigns ready to launch (asset_generated status and scheduled time reached)
+  async findReadyToLaunch() {
+    try {
+      const query = `
+        SELECT * FROM campaigns
+        WHERE status = 'asset_generated'
+        AND scheduled_at <= NOW()
+        ORDER BY scheduled_at ASC
+      `;
+
+      const result = await this.pool.query(query);
+      return result.rows.map((row) => this.parseCampaign(row));
+    } catch (error) {
+      throw new Error(
+        `Error finding ready to launch campaigns: ${error.message}`
+      );
+    }
+  }
+
+  // Update campaign status
+  async updateStatus(campaignId, status) {
+    try {
+      const query = `
+        UPDATE campaigns
+        SET status = $1, updated_at = CURRENT_TIMESTAMP
+        WHERE id = $2
+        RETURNING *
+      `;
+
+      const result = await this.pool.query(query, [status, campaignId]);
+      return result.rows[0] ? this.parseCampaign(result.rows[0]) : null;
+    } catch (error) {
+      throw new Error(`Error updating campaign status: ${error.message}`);
+    }
+  }
+
   async findCampaignsForAssetGeneration() {
     try {
       const query = `
