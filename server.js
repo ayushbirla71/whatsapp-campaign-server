@@ -192,12 +192,17 @@ const server = app.listen(PORT, () => {
     port: PORT,
   });
 
+  // Start background job processor
+  const backgroundJobProcessor = require("./services/backgroundJobProcessor");
+  backgroundJobProcessor.start();
+
   console.log(`
 🚀 WhatsApp Business API Server is running!
 📍 Port: ${PORT}
 🌍 Environment: ${process.env.NODE_ENV}
 📚 API Documentation: http://localhost:${PORT}/api
 ❤️  Health Check: http://localhost:${PORT}/health
+🔄 Background Jobs: Campaign processing enabled
 
 🔐 Default Super Admin Credentials:
 📧 Email: ${process.env.DEFAULT_SUPER_ADMIN_EMAIL || "superadmin@example.com"}
@@ -207,6 +212,7 @@ const server = app.listen(PORT, () => {
 1. Initialize the database: npm run db:init
 2. Change default admin password after first login
 3. Configure your PostgreSQL database settings in .env
+4. Configure AWS SQS settings for message processing
   `);
 });
 

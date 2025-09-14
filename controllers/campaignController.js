@@ -596,6 +596,100 @@ const getCampaignStats = asyncHandler(async (req, res) => {
   });
 });
 
+// Campaign processing actions
+const processCampaignMessages = asyncHandler(async (req, res) => {
+  const { campaignId } = req.params;
+
+  if (!["super_admin", "system_admin"].includes(req.user.role)) {
+    throw new AppError(
+      "Only super admin and system admin can process campaign messages",
+      403
+    );
+  }
+
+  const campaign = await Campaign.findById(campaignId);
+  if (!campaign) {
+    throw new AppError("Campaign not found", 404);
+  }
+
+  if (campaign.status !== "asset_generated") {
+    throw new AppError(
+      "Only campaigns with asset_generated status can be processed",
+      400
+    );
+  }
+
+  // Import campaign processing service
+  const campaignProcessingService = require("../services/campaignProcessingService");
+
+  try {
+    await campaignProcessingService.processCampaign(campaign);
+
+    logger.info("Campaign messages processed successfully", {
+      campaignId,
+      campaignName: campaign.name,
+      processedBy: req.user.id,
+    });
+
+    res.json({
+      success: true,
+      message: "Campaign messages processed and sent to queue successfully",
+      data: {
+        campaignId,
+        status: "ready_to_launch",
+      },
+    });
+  } catch (error) {
+    logger.error("Error processing campaign messages", {
+      campaignId,
+      error: error.message,
+      processedBy: req.user.id,
+    });
+
+    throw new AppError(
+      `Failed to process campaign messages: ${error.message}`,
+      500
+    );
+  }
+});
+
+// Get SQS queue status
+const getSQSStatus = asyncHandler(async (req, res) => {
+  if (!["super_admin", "system_admin"].includes(req.user.role)) {
+    throw new AppError(
+      "Only super admin and system admin can check SQS status",
+      403
+    );
+  }
+
+  const sqsService = require("../services/sqsService");
+
+  try {
+    const isConfigured = await sqsService.isConfigured();
+    let queueAttributes = null;
+
+    if (isConfigured) {
+      queueAttributes = await sqsService.getQueueAttributes();
+    }
+
+    res.json({
+      success: true,
+      data: {
+        isConfigured,
+        queueUrl: process.env.AWS_SQS_QUEUE_URL || null,
+        queueAttributes,
+      },
+    });
+  } catch (error) {
+    logger.error("Error checking SQS status", {
+      error: error.message,
+      checkedBy: req.user.id,
+    });
+
+    throw new AppError(`Failed to check SQS status: ${error.message}`, 500);
+  }
+});
+
 module.exports = {
   getCampaigns,
   getCampaignById,
@@ -610,4 +704,6 @@ module.exports = {
   pauseCampaign,
   cancelCampaign,
   getCampaignStats,
+  processCampaignMessages,
+  getSQSStatus,
 };

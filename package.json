@@ -11,7 +11,8 @@
     "db:drop": "node scripts/initDatabase.js drop",
     "db:test": "node scripts/initDatabase.js test",
     "db:cleanup": "node scripts/initDatabase.js cleanup",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "test:campaign-processing": "node scripts/testCampaignProcessing.js"
   },
   "keywords": [
     "whatsapp",
@@ -23,6 +24,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "aws-sdk": "^2.1692.0",
     "axios": "^1.6.2",
     "bcryptjs": "^3.0.2",
     "cors": "^2.8.5",
