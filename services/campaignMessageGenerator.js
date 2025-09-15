@@ -1,4 +1,4 @@
-const logger = require('../utils/logger');
+const logger = require("../utils/logger");
 
 class CampaignMessageGenerator {
   /**
@@ -14,23 +14,37 @@ class CampaignMessageGenerator {
         organizationId: campaign.organization_id,
         campaignId: campaign.id,
         campaignAudienceId: audienceData.id,
-        to: audienceData.msisdn
+        to: audienceData.msisdn,
       };
 
       // Determine message type based on template category and content
-      if (template.category === 'AUTHENTICATION' || template.category === 'MARKETING' || template.category === 'UTILITY') {
-        return this.generateTemplateMessage(baseMessage, template, audienceData);
-      } else if (template.header_type === 'IMAGE' || template.header_type === 'VIDEO' || template.header_type === 'DOCUMENT') {
+
+      console.log("Template category:", template);
+      if (
+        template.category === "AUTHENTICATION" ||
+        template.category === "MARKETING" ||
+        template.category === "UTILITY"
+      ) {
+        return this.generateTemplateMessage(
+          baseMessage,
+          template,
+          audienceData
+        );
+      } else if (
+        template.header_type === "IMAGE" ||
+        template.header_type === "VIDEO" ||
+        template.header_type === "DOCUMENT"
+      ) {
         return this.generateMediaMessage(baseMessage, template, audienceData);
       } else {
         return this.generateTextMessage(baseMessage, template, audienceData);
       }
     } catch (error) {
-      logger.error('Error generating message payload', {
+      logger.error("Error generating message payload", {
         campaignId: campaign.id,
         templateId: template.id,
         audienceId: audienceData.id,
-        error: error.message
+        error: error.message,
       });
       throw new Error(`Failed to generate message: ${error.message}`);
     }
@@ -47,15 +61,18 @@ class CampaignMessageGenerator {
     const templateMessage = {
       ...baseMessage,
       templateName: template.name,
-      templateLanguage: template.language || 'en',
-      templateParameters: []
+      templateLanguage: template.language || "en",
+      templateParameters: [],
     };
+
+    console.log("audienceData", audienceData);
 
     // Generate template parameters from audience attributes and template components
     if (template.components && Array.isArray(template.components)) {
       templateMessage.templateParameters = this.generateTemplateParameters(
-        template.components, 
-        audienceData.attributes || {}
+        template.components,
+        audienceData.attributes || {},
+        audienceData.generated_asset_urls || {}
       );
     }
 
@@ -70,15 +87,15 @@ class CampaignMessageGenerator {
    * @returns {Object} Text message payload
    */
   generateTextMessage(baseMessage, template, audienceData) {
-    let messageContent = template.body_text || '';
+    let messageContent = template.body_text || "";
 
     // Replace placeholders with audience data
     messageContent = this.replacePlaceholders(messageContent, audienceData);
 
     return {
       ...baseMessage,
-      messageType: 'text',
-      messageContent
+      messageType: "text",
+      messageContent,
     };
   }
 
@@ -90,9 +107,9 @@ class CampaignMessageGenerator {
    * @returns {Object} Media message payload
    */
   generateMediaMessage(baseMessage, template, audienceData) {
-    const mediaType = template.header_type?.toLowerCase() || 'image';
+    const mediaType = template.header_type?.toLowerCase() || "image";
     let mediaUrl = template.header_media_url;
-    let caption = template.body_text || '';
+    let caption = template.body_text || "";
 
     // Replace placeholders in media URL and caption
     if (mediaUrl) {
@@ -105,16 +122,12 @@ class CampaignMessageGenerator {
     const mediaMessage = {
       ...baseMessage,
       messageType: mediaType,
-      mediaUrl
+      mediaUrl,
+      caption: caption, // Always include caption, even if empty
     };
 
-    // Add caption for image and video messages
-    if (mediaType === 'image' || mediaType === 'video') {
-      mediaMessage.caption = caption;
-    }
-
     // Add filename for document messages
-    if (mediaType === 'document' && audienceData.attributes?.filename) {
+    if (mediaType === "document" && audienceData.attributes?.filename) {
       mediaMessage.filename = audienceData.attributes.filename;
     }
 
@@ -127,39 +140,55 @@ class CampaignMessageGenerator {
    * @param {Object} attributes - Audience attributes
    * @returns {Array} Template parameters
    */
-  generateTemplateParameters(components, attributes) {
+  generateTemplateParameters(components, attributes, generatedAssetUrls) {
     const parameters = [];
 
-    components.forEach(component => {
-      if (component.type === 'HEADER') {
-        if (component.format === 'TEXT' && component.text) {
+    components.forEach((component) => {
+      if (component.type === "HEADER") {
+        if (component.format === "TEXT" && component.text) {
           parameters.push({
-            type: 'header',
-            valueType: 'text',
-            value: this.replacePlaceholders(component.text, attributes)
+            type: "header",
+            valueType: "text",
+            value: this.replacePlaceholders(component.text, attributes),
           });
-        } else if (component.format === 'IMAGE' || component.format === 'VIDEO' || component.format === 'DOCUMENT') {
-          const mediaUrl = this.getMediaUrlFromAttributes(attributes, component.format.toLowerCase());
+        } else if (
+          component.format === "IMAGE" ||
+          component.format === "VIDEO" ||
+          component.format === "DOCUMENT"
+        ) {
+          // const mediaUrl = this.getMediaUrlFromAttributes(
+          //   attributes,
+          //   component.format.toLowerCase()
+          // );
+
+          console.log("Generated asset URLs:", generatedAssetUrls);
+          const mediaUrl =
+            generatedAssetUrls[component.format.toLowerCase()] || null;
+          console.log("Media URL:", mediaUrl);
+          console.log("Media type:", component.format.toLowerCase());
           if (mediaUrl) {
             parameters.push({
-              type: 'header',
+              type: "header",
               valueType: component.format.toLowerCase(),
-              mediaUrl: mediaUrl
+              mediaUrl: mediaUrl,
             });
           }
         }
-      } else if (component.type === 'BODY' && component.text) {
+      } else if (component.type === "BODY" && component.text) {
         // Extract placeholders from body text and map to attributes
-        const bodyParams = this.extractBodyParameters(component.text, attributes);
+        const bodyParams = this.extractBodyParameters(
+          component.text,
+          attributes
+        );
         parameters.push(...bodyParams);
-      } else if (component.type === 'BUTTON' && component.buttons) {
+      } else if (component.type === "BUTTON" && component.buttons) {
         component.buttons.forEach((button, index) => {
-          if (button.type === 'URL' && button.url) {
+          if (button.type === "URL" && button.url) {
             parameters.push({
-              type: 'button',
-              valueType: 'text',
+              type: "button",
+              valueType: "text",
               value: this.replacePlaceholders(button.url, attributes),
-              buttonIndex: index
+              buttonIndex: index,
             });
           }
         });
@@ -183,12 +212,15 @@ class CampaignMessageGenerator {
     while ((match = placeholderRegex.exec(bodyText)) !== null) {
       const paramIndex = parseInt(match[1]);
       const attributeKey = `param_${paramIndex}`;
-      const value = attributes[attributeKey] || attributes[`body_param_${paramIndex}`] || `Parameter ${paramIndex}`;
+      const value =
+        attributes[attributeKey] ||
+        attributes[`body_param_${paramIndex}`] ||
+        `Parameter ${paramIndex}`;
 
       parameters.push({
-        type: 'body',
-        valueType: 'text',
-        value: value.toString()
+        type: "body",
+        valueType: "text",
+        value: value.toString(),
       });
     }
 
@@ -202,27 +234,38 @@ class CampaignMessageGenerator {
    * @returns {string} Text with replaced placeholders
    */
   replacePlaceholders(text, audienceData) {
-    if (!text || typeof text !== 'string') return text;
+    if (!text || typeof text !== "string") return text;
 
     let replacedText = text;
     const attributes = audienceData.attributes || {};
 
     // Replace common placeholders
-    replacedText = replacedText.replace(/\{\{name\}\}/gi, audienceData.name || 'Customer');
-    replacedText = replacedText.replace(/\{\{phone\}\}/gi, audienceData.msisdn || '');
+    replacedText = replacedText.replace(
+      /\{\{name\}\}/gi,
+      audienceData.name || "Customer"
+    );
+    replacedText = replacedText.replace(
+      /\{\{phone\}\}/gi,
+      audienceData.msisdn || ""
+    );
 
     // Replace numbered placeholders {{1}}, {{2}}, etc.
     const placeholderRegex = /\{\{(\d+)\}\}/g;
     replacedText = replacedText.replace(placeholderRegex, (match, number) => {
       const paramKey = `param_${number}`;
-      return attributes[paramKey] || attributes[`body_param_${number}`] || match;
+      return (
+        attributes[paramKey] || attributes[`body_param_${number}`] || match
+      );
     });
 
     // Replace attribute placeholders {{attribute_name}}
     const attributeRegex = /\{\{([a-zA-Z_][a-zA-Z0-9_]*)\}\}/g;
-    replacedText = replacedText.replace(attributeRegex, (match, attributeName) => {
-      return attributes[attributeName] || match;
-    });
+    replacedText = replacedText.replace(
+      attributeRegex,
+      (match, attributeName) => {
+        return attributes[attributeName] || match;
+      }
+    );
 
     return replacedText;
   }
@@ -244,17 +287,25 @@ class CampaignMessageGenerator {
    * @returns {boolean} True if valid
    */
   validateMessagePayload(messagePayload) {
-    if (!messagePayload.organizationId || !messagePayload.campaignId || 
-        !messagePayload.campaignAudienceId || !messagePayload.to) {
+    if (
+      !messagePayload.organizationId ||
+      !messagePayload.campaignId ||
+      !messagePayload.campaignAudienceId ||
+      !messagePayload.to
+    ) {
       return false;
     }
 
     // Validate based on message type
     if (messagePayload.templateName) {
       return !!(messagePayload.templateName && messagePayload.templateLanguage);
-    } else if (messagePayload.messageType === 'text') {
+    } else if (messagePayload.messageType === "text") {
       return !!messagePayload.messageContent;
-    } else if (['image', 'video', 'document', 'audio'].includes(messagePayload.messageType)) {
+    } else if (
+      ["image", "video", "document", "audio"].includes(
+        messagePayload.messageType
+      )
+    ) {
       return !!messagePayload.mediaUrl;
     }
 

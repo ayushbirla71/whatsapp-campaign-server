@@ -35,6 +35,7 @@ SQS_MESSAGE_GROUP_ID=whatsapp-messages
 ### AWS Setup
 
 1. **Create SQS Queue**:
+
    ```bash
    aws sqs create-queue --queue-name whatsapp-messages --region us-east-1
    ```
@@ -62,6 +63,7 @@ SQS_MESSAGE_GROUP_ID=whatsapp-messages
 The system generates different message types based on campaign templates and audience data:
 
 ### Template Message
+
 ```json
 {
   "organizationId": "123e4567-e89b-12d3-a456-426614174000",
@@ -75,6 +77,7 @@ The system generates different message types based on campaign templates and aud
 ```
 
 ### Template Message with Parameters
+
 ```json
 {
   "organizationId": "123e4567-e89b-12d3-a456-426614174000",
@@ -99,6 +102,7 @@ The system generates different message types based on campaign templates and aud
 ```
 
 ### Text Message
+
 ```json
 {
   "organizationId": "123e4567-e89b-12d3-a456-426614174000",
@@ -111,6 +115,7 @@ The system generates different message types based on campaign templates and aud
 ```
 
 ### Media Messages
+
 ```json
 {
   "organizationId": "123e4567-e89b-12d3-a456-426614174000",
@@ -123,9 +128,12 @@ The system generates different message types based on campaign templates and aud
 }
 ```
 
+**Note**: The `caption` field is supported for all media message types (image, video, document, audio) and will be included in the message payload even if empty.
+
 ## API Endpoints
 
 ### Process Campaign Messages
+
 ```http
 POST /api/campaigns/:campaignId/process-messages
 Authorization: Bearer <token>
@@ -134,6 +142,7 @@ Authorization: Bearer <token>
 Manually trigger message processing for a specific campaign.
 
 ### Check SQS Status
+
 ```http
 GET /api/campaigns/sqs-status
 Authorization: Bearer <token>

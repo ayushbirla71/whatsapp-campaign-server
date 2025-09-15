@@ -1,7 +1,7 @@
-const AssetGenerateFiles = require('../models/AssetGenerateFiles');
-const Template = require('../models/Template');
-const { AppError, asyncHandler } = require('../middleware/errorHandler');
-const logger = require('../utils/logger');
+const AssetGenerateFiles = require("../models/AssetGenerateFiles");
+const Template = require("../models/Template");
+const { AppError, asyncHandler } = require("../middleware/errorHandler");
+const logger = require("../utils/logger");
 
 // Get asset files for a template
 const getAssetFilesByTemplate = asyncHandler(async (req, res) => {
@@ -11,20 +11,29 @@ const getAssetFilesByTemplate = asyncHandler(async (req, res) => {
   // Check if template exists and user has access
   const template = await Template.findById(templateId);
   if (!template) {
-    throw new AppError('Template not found', 404);
+    throw new AppError("Template not found", 404);
   }
 
   // Check organization access
-  if (req.user.role === 'organization_admin' && req.user.organization_id !== template.organization_id) {
-    throw new AppError('Access denied to this template', 403);
+  if (
+    req.user.role === "organization_admin" &&
+    req.user.organization_id !== template.organization_id
+  ) {
+    throw new AppError("Access denied to this template", 403);
   }
 
-  if (req.user.role === 'organization_user' && req.user.organization_id !== template.organization_id) {
-    throw new AppError('Access denied to this template', 403);
+  if (
+    req.user.role === "organization_user" &&
+    req.user.organization_id !== template.organization_id
+  ) {
+    throw new AppError("Access denied to this template", 403);
   }
 
-  const activeOnly = include_inactive !== 'true';
-  const assetFiles = await AssetGenerateFiles.findByTemplateId(templateId, activeOnly);
+  const activeOnly = include_inactive !== "true";
+  const assetFiles = await AssetGenerateFiles.findByTemplateId(
+    templateId,
+    activeOnly
+  );
 
   res.json({
     success: true,
@@ -33,9 +42,9 @@ const getAssetFilesByTemplate = asyncHandler(async (req, res) => {
       template: {
         id: template.id,
         name: template.name,
-        category: template.category
-      }
-    }
+        category: template.category,
+      },
+    },
   });
 });
 
@@ -46,24 +55,33 @@ const getAssetFilesByOrganization = asyncHandler(async (req, res) => {
   const offset = (page - 1) * limit;
 
   // Check organization access
-  if (req.user.role === 'organization_admin' && req.user.organization_id !== organizationId) {
-    throw new AppError('Access denied to this organization', 403);
+  if (
+    req.user.role === "organization_admin" &&
+    req.user.organization_id !== organizationId
+  ) {
+    throw new AppError("Access denied to this organization", 403);
   }
 
-  if (req.user.role === 'organization_user' && req.user.organization_id !== organizationId) {
-    throw new AppError('Access denied to this organization', 403);
+  if (
+    req.user.role === "organization_user" &&
+    req.user.organization_id !== organizationId
+  ) {
+    throw new AppError("Access denied to this organization", 403);
   }
 
   const filters = {
     limit: parseInt(limit),
-    offset: parseInt(offset)
+    offset: parseInt(offset),
   };
 
-  if (is_active !== undefined) filters.is_active = is_active === 'true';
+  if (is_active !== undefined) filters.is_active = is_active === "true";
   if (template_id) filters.template_id = template_id;
   if (search) filters.search = search;
 
-  const assetFiles = await AssetGenerateFiles.getAssetFilesByOrganization(organizationId, filters);
+  const assetFiles = await AssetGenerateFiles.getAssetFilesByOrganization(
+    organizationId,
+    filters
+  );
   const stats = await AssetGenerateFiles.getAssetFileStats(organizationId);
 
   res.json({
@@ -75,9 +93,9 @@ const getAssetFilesByOrganization = asyncHandler(async (req, res) => {
         page: parseInt(page),
         limit: parseInt(limit),
         total: stats.total_files,
-        pages: Math.ceil(stats.total_files / limit)
-      }
-    }
+        pages: Math.ceil(stats.total_files / limit),
+      },
+    },
   });
 });
 
@@ -89,49 +107,57 @@ const createAssetFile = asyncHandler(async (req, res) => {
   // Check if template exists and user has access
   const template = await Template.findById(templateId);
   if (!template) {
-    throw new AppError('Template not found', 404);
+    throw new AppError("Template not found", 404);
   }
 
   // Check organization access
-  if (req.user.role === 'organization_admin' && req.user.organization_id !== template.organization_id) {
-    throw new AppError('Access denied to this template', 403);
+  if (
+    req.user.role === "organization_admin" &&
+    req.user.organization_id !== template.organization_id
+  ) {
+    throw new AppError("Access denied to this template", 403);
   }
 
-  if (req.user.role === 'organization_user') {
-    throw new AppError('Organization users cannot create asset files', 403);
+  if (req.user.role === "organization_user") {
+    throw new AppError("Organization users cannot create asset files", 403);
   }
 
   // Validate asset file data
   const validationErrors = await AssetGenerateFiles.validateAssetFileData({
     ...assetFileData,
-    template_id: templateId
+    template_id: templateId,
   });
 
   if (validationErrors.length > 0) {
-    throw new AppError(`Validation failed: ${validationErrors.join(', ')}`, 400);
+    throw new AppError(
+      `Validation failed: ${validationErrors.join(", ")}`,
+      400
+    );
   }
 
   const newAssetFileData = {
     ...assetFileData,
     template_id: templateId,
-    created_by: req.user.id
+    created_by: req.user.id,
   };
 
-  const newAssetFile = await AssetGenerateFiles.createAssetFile(newAssetFileData);
+  const newAssetFile = await AssetGenerateFiles.createAssetFile(
+    newAssetFileData
+  );
 
-  logger.info('Asset file created successfully', {
+  logger.info("Asset file created successfully", {
     assetFileId: newAssetFile.id,
     fileName: newAssetFile.file_name,
     templateId,
-    createdBy: req.user.id
+    createdBy: req.user.id,
   });
 
   res.status(201).json({
     success: true,
-    message: 'Asset file created successfully',
+    message: "Asset file created successfully",
     data: {
-      asset_file: newAssetFile
-    }
+      asset_file: newAssetFile,
+    },
   });
 });
 
@@ -142,22 +168,25 @@ const updateAssetFile = asyncHandler(async (req, res) => {
 
   const assetFile = await AssetGenerateFiles.findById(assetFileId);
   if (!assetFile) {
-    throw new AppError('Asset file not found', 404);
+    throw new AppError("Asset file not found", 404);
   }
 
   // Get template to check organization access
   const template = await Template.findById(assetFile.template_id);
   if (!template) {
-    throw new AppError('Associated template not found', 404);
+    throw new AppError("Associated template not found", 404);
   }
 
   // Check organization access
-  if (req.user.role === 'organization_admin' && req.user.organization_id !== template.organization_id) {
-    throw new AppError('Access denied to this asset file', 403);
+  if (
+    req.user.role === "organization_admin" &&
+    req.user.organization_id !== template.organization_id
+  ) {
+    throw new AppError("Access denied to this asset file", 403);
   }
 
-  if (req.user.role === 'organization_user') {
-    throw new AppError('Organization users cannot update asset files', 403);
+  if (req.user.role === "organization_user") {
+    throw new AppError("Organization users cannot update asset files", 403);
   }
 
   // Validate update data if file_content is being updated
@@ -165,54 +194,69 @@ const updateAssetFile = asyncHandler(async (req, res) => {
     const validationErrors = await AssetGenerateFiles.validateAssetFileData({
       template_id: assetFile.template_id,
       file_name: assetFile.file_name,
-      file_content: updateData.file_content
+      file_content: updateData.file_content,
     });
 
     if (validationErrors.length > 0) {
-      throw new AppError(`Validation failed: ${validationErrors.join(', ')}`, 400);
+      throw new AppError(
+        `Validation failed: ${validationErrors.join(", ")}`,
+        400
+      );
     }
   }
 
-  const updatedAssetFile = await AssetGenerateFiles.updateAssetFile(assetFileId, updateData);
+  const updatedAssetFile = await AssetGenerateFiles.updateAssetFile(
+    assetFileId,
+    updateData
+  );
 
-  logger.info('Asset file updated successfully', {
+  logger.info("Asset file updated successfully", {
     assetFileId,
     fileName: assetFile.file_name,
-    updatedBy: req.user.id
+    updatedBy: req.user.id,
   });
 
   res.json({
     success: true,
-    message: 'Asset file updated successfully',
+    message: "Asset file updated successfully",
     data: {
-      asset_file: updatedAssetFile
-    }
+      asset_file: updatedAssetFile,
+    },
   });
 });
 
 // Create new version of asset file
 const createAssetFileVersion = asyncHandler(async (req, res) => {
   const { templateId } = req.params;
-  const { file_name, file_content, description } = req.body;
+  const { file_name, file_content, description, typeOfContent } = req.body;
 
   // Check if template exists and user has access
   const template = await Template.findById(templateId);
   if (!template) {
-    throw new AppError('Template not found', 404);
+    throw new AppError("Template not found", 404);
   }
 
   // Check organization access
-  if (req.user.role === 'organization_admin' && req.user.organization_id !== template.organization_id) {
-    throw new AppError('Access denied to this template', 403);
+  if (
+    req.user.role === "organization_admin" &&
+    req.user.organization_id !== template.organization_id
+  ) {
+    throw new AppError("Access denied to this template", 403);
   }
 
-  if (req.user.role === 'organization_user') {
-    throw new AppError('Organization users cannot create asset file versions', 403);
+  if (req.user.role === "organization_user") {
+    throw new AppError(
+      "Organization users cannot create asset file versions",
+      403
+    );
   }
 
   // Validate required fields
-  if (!file_name || !file_content) {
-    throw new AppError('File name and content are required', 400);
+  if (!file_name || !file_content || !typeOfContent) {
+    throw new AppError(
+      "File name, content, and typeOfContent are required",
+      400
+    );
   }
 
   const newVersion = await AssetGenerateFiles.createVersionedAssetFile(
@@ -220,23 +264,24 @@ const createAssetFileVersion = asyncHandler(async (req, res) => {
     file_name,
     file_content,
     description,
+    typeOfContent,
     req.user.id
   );
 
-  logger.info('Asset file version created successfully', {
+  logger.info("Asset file version created successfully", {
     assetFileId: newVersion.id,
     fileName: file_name,
     version: newVersion.version,
     templateId,
-    createdBy: req.user.id
+    createdBy: req.user.id,
   });
 
   res.status(201).json({
     success: true,
-    message: 'Asset file version created successfully',
+    message: "Asset file version created successfully",
     data: {
-      asset_file: newVersion
-    }
+      asset_file: newVersion,
+    },
   });
 });
 
@@ -247,19 +292,28 @@ const getFileVersions = asyncHandler(async (req, res) => {
   // Check if template exists and user has access
   const template = await Template.findById(templateId);
   if (!template) {
-    throw new AppError('Template not found', 404);
+    throw new AppError("Template not found", 404);
   }
 
   // Check organization access
-  if (req.user.role === 'organization_admin' && req.user.organization_id !== template.organization_id) {
-    throw new AppError('Access denied to this template', 403);
+  if (
+    req.user.role === "organization_admin" &&
+    req.user.organization_id !== template.organization_id
+  ) {
+    throw new AppError("Access denied to this template", 403);
   }
 
-  if (req.user.role === 'organization_user' && req.user.organization_id !== template.organization_id) {
-    throw new AppError('Access denied to this template', 403);
+  if (
+    req.user.role === "organization_user" &&
+    req.user.organization_id !== template.organization_id
+  ) {
+    throw new AppError("Access denied to this template", 403);
   }
 
-  const versions = await AssetGenerateFiles.getFileVersions(templateId, fileName);
+  const versions = await AssetGenerateFiles.getFileVersions(
+    templateId,
+    fileName
+  );
 
   res.json({
     success: true,
@@ -267,10 +321,10 @@ const getFileVersions = asyncHandler(async (req, res) => {
       versions,
       template: {
         id: template.id,
-        name: template.name
+        name: template.name,
       },
-      file_name: fileName
-    }
+      file_name: fileName,
+    },
   });
 });
 
@@ -280,38 +334,106 @@ const deactivateAssetFile = asyncHandler(async (req, res) => {
 
   const assetFile = await AssetGenerateFiles.findById(assetFileId);
   if (!assetFile) {
-    throw new AppError('Asset file not found', 404);
+    throw new AppError("Asset file not found", 404);
   }
 
   // Get template to check organization access
   const template = await Template.findById(assetFile.template_id);
   if (!template) {
-    throw new AppError('Associated template not found', 404);
+    throw new AppError("Associated template not found", 404);
   }
 
   // Check organization access
-  if (req.user.role === 'organization_admin' && req.user.organization_id !== template.organization_id) {
-    throw new AppError('Access denied to this asset file', 403);
+  if (
+    req.user.role === "organization_admin" &&
+    req.user.organization_id !== template.organization_id
+  ) {
+    throw new AppError("Access denied to this asset file", 403);
   }
 
-  if (req.user.role === 'organization_user') {
-    throw new AppError('Organization users cannot deactivate asset files', 403);
+  if (req.user.role === "organization_user") {
+    throw new AppError("Organization users cannot deactivate asset files", 403);
   }
 
-  const deactivatedAssetFile = await AssetGenerateFiles.deactivateAssetFile(assetFileId);
+  const deactivatedAssetFile = await AssetGenerateFiles.deactivateAssetFile(
+    assetFileId
+  );
 
-  logger.info('Asset file deactivated successfully', {
+  logger.info("Asset file deactivated successfully", {
     assetFileId,
     fileName: assetFile.file_name,
-    deactivatedBy: req.user.id
+    deactivatedBy: req.user.id,
   });
 
   res.json({
     success: true,
-    message: 'Asset file deactivated successfully',
+    message: "Asset file deactivated successfully",
     data: {
-      asset_file: deactivatedAssetFile
-    }
+      asset_file: deactivatedAssetFile,
+    },
+  });
+});
+
+// Get asset files by content type
+const getAssetFilesByContentType = asyncHandler(async (req, res) => {
+  const { organizationId, contentType } = req.params;
+  const { page = 1, limit = 10, is_active, template_id } = req.query;
+  const offset = (page - 1) * limit;
+
+  // Check organization access
+  if (
+    req.user.role === "organization_admin" &&
+    req.user.organization_id !== organizationId
+  ) {
+    throw new AppError("Access denied to this organization", 403);
+  }
+
+  if (
+    req.user.role === "organization_user" &&
+    req.user.organization_id !== organizationId
+  ) {
+    throw new AppError("Access denied to this organization", 403);
+  }
+
+  // Validate content type
+  if (!["public", "personalized"].includes(contentType)) {
+    throw new AppError(
+      'Invalid content type. Must be "public" or "personalized"',
+      400
+    );
+  }
+
+  const filters = {
+    organization_id: organizationId,
+    limit: parseInt(limit),
+    offset: parseInt(offset),
+  };
+
+  if (is_active !== undefined) filters.is_active = is_active === "true";
+  if (template_id) filters.template_id = template_id;
+
+  const AssetGenerateFile = require("../models/AssetGenerateFile");
+  const assetFiles = await AssetGenerateFile.findByContentType(
+    contentType,
+    filters
+  );
+  const stats = await AssetGenerateFile.getContentTypeStatistics(
+    organizationId
+  );
+
+  res.json({
+    success: true,
+    data: {
+      asset_files: assetFiles,
+      content_type: contentType,
+      statistics: stats,
+      pagination: {
+        page: parseInt(page),
+        limit: parseInt(limit),
+        total: assetFiles.length,
+        pages: Math.ceil(assetFiles.length / limit),
+      },
+    },
   });
 });
 
@@ -322,5 +444,6 @@ module.exports = {
   updateAssetFile,
   createAssetFileVersion,
   getFileVersions,
-  deactivateAssetFile
+  deactivateAssetFile,
+  getAssetFilesByContentType,
 };

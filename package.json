@@ -11,8 +11,21 @@
     "db:drop": "node scripts/initDatabase.js drop",
     "db:test": "node scripts/initDatabase.js test",
     "db:cleanup": "node scripts/initDatabase.js cleanup",
+    "db:migrate-webhooks": "node scripts/migrateWebhookTables.js migrate",
+    "db:check-webhooks": "node scripts/migrateWebhookTables.js status",
+    "db:add-caption": "node scripts/addCaptionColumn.js add",
+    "db:check-caption": "node scripts/addCaptionColumn.js check",
+    "db:add-filename": "node scripts/addFilenameColumn.js add",
+    "db:check-filename": "node scripts/addFilenameColumn.js check",
+    "db:check-all-columns": "node scripts/addFilenameColumn.js check-all",
+    "db:migrate-content-type": "node scripts/migrateContentType.js migrate",
+    "db:check-content-type": "node scripts/migrateContentType.js check",
+    "db:add-content-type": "node scripts/addContentTypeColumn.js add",
+    "db:check-content-type-column": "node scripts/addContentTypeColumn.js check",
     "test": "echo \"Error: no test specified\" && exit 1",
-    "test:campaign-processing": "node scripts/testCampaignProcessing.js"
+    "test:campaign-processing": "node scripts/testCampaignProcessing.js",
+    "test:content-type": "node scripts/testContentType.js all",
+    "test:controller-validation": "node scripts/testControllerValidation.js all"
   },
   "keywords": [
     "whatsapp",

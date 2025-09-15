@@ -13,6 +13,9 @@ CREATE TYPE campaign_status AS ENUM ('draft', 'pending_approval', 'approved', 'r
 CREATE TYPE campaign_type AS ENUM ('immediate', 'scheduled', 'recurring');
 CREATE TYPE asset_generation_status AS ENUM ('pending', 'processing', 'generated', 'failed');
 CREATE TYPE message_status_extended AS ENUM ('pending', 'asset_generating', 'asset_generated', 'ready_to_send', 'sent', 'delivered', 'read', 'failed');
+CREATE TYPE content_type AS ENUM ('public', 'personalized');
+DROP TYPE IF EXISTS webhook_event_type CASCADE;
+CREATE TYPE webhook_event_type AS ENUM ('message_status', 'delivery_receipt', 'read_receipt', 'message_received', 'user_status', 'error', 'interactive_response');
 
 -- Organizations table
 CREATE TABLE organizations (
@@ -133,6 +136,7 @@ CREATE TABLE asset_generate_files (
     file_name VARCHAR(255) NOT NULL,
     file_content TEXT NOT NULL,
     description TEXT,
+    typeOfContent content_type NOT NULL,
     version VARCHAR(50) DEFAULT '1.0',
     is_active BOOLEAN DEFAULT true,
 
@@ -290,6 +294,97 @@ CREATE TABLE audit_logs (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
+-- Webhook events table for tracking all webhook events
+CREATE TABLE webhook_events (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    organization_id UUID REFERENCES organizations(id) ON DELETE CASCADE,
+    campaign_id UUID REFERENCES campaigns(id) ON DELETE SET NULL,
+    campaign_audience_id UUID REFERENCES campaign_audience(id) ON DELETE SET NULL,
+    event_type webhook_event_type NOT NULL,
+    whatsapp_message_id VARCHAR(255),
+    from_phone_number VARCHAR(255),
+    to_phone_number VARCHAR(255),
+    status VARCHAR(50),
+    timestamp TIMESTAMP WITH TIME ZONE,
+    raw_payload JSONB NOT NULL,
+    processed BOOLEAN DEFAULT false,
+    error_message TEXT,
+
+    -- Interactive message response data
+    interactive_type VARCHAR(50),
+    interactive_data JSONB,
+
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Messages table for tracking all message content and interactions
+CREATE TABLE messages (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    organization_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+    campaign_id UUID REFERENCES campaigns(id) ON DELETE SET NULL,
+    campaign_audience_id UUID REFERENCES campaign_audience(id) ON DELETE SET NULL,
+    whatsapp_message_id VARCHAR(255) UNIQUE,
+
+    -- Message routing
+    from_number VARCHAR(255) NOT NULL,
+    to_number VARCHAR(255) NOT NULL,
+
+    -- Message content
+    message_type VARCHAR(50) DEFAULT 'text',
+    message_content TEXT,
+    media_url TEXT,
+    media_type VARCHAR(50),
+    caption TEXT,
+    filename VARCHAR(255),
+
+    -- Template information (for outgoing template messages)
+    template_name VARCHAR(255),
+    template_language VARCHAR(10),
+    template_parameters JSONB,
+
+    -- Message direction and status
+    is_incoming BOOLEAN DEFAULT false,
+    message_status VARCHAR(50) DEFAULT 'pending',
+    sent_at TIMESTAMP WITH TIME ZONE,
+    delivered_at TIMESTAMP WITH TIME ZONE,
+    read_at TIMESTAMP WITH TIME ZONE,
+    failed_at TIMESTAMP WITH TIME ZONE,
+    failure_reason TEXT,
+
+    -- Interactive message tracking (for buttons, lists, etc.)
+    interaction_data JSONB,
+
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Incoming messages table for tracking received messages
+CREATE TABLE incoming_messages (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    organization_id UUID REFERENCES organizations(id) ON DELETE CASCADE,
+    whatsapp_message_id VARCHAR(255) UNIQUE NOT NULL,
+    from_phone_number VARCHAR(255) NOT NULL,
+    to_phone_number VARCHAR(255) NOT NULL,
+    message_type VARCHAR(50) NOT NULL,
+    content TEXT,
+    media_url TEXT,
+    media_type VARCHAR(50),
+    media_size INTEGER,
+    timestamp TIMESTAMP WITH TIME ZONE NOT NULL,
+
+    -- Interactive message data
+    interactive_type VARCHAR(50),
+    interactive_data JSONB,
+
+    -- Context (if replying to a campaign message)
+    context_message_id VARCHAR(255),
+    context_campaign_id UUID REFERENCES campaigns(id) ON DELETE SET NULL,
+
+    raw_payload JSONB NOT NULL,
+    processed BOOLEAN DEFAULT false,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
 -- Create indexes for better performance
 CREATE INDEX idx_users_email ON users(email);
 CREATE INDEX idx_users_organization_id ON users(organization_id);
@@ -320,8 +415,41 @@ CREATE INDEX idx_campaign_audience_msisdn ON campaign_audience(msisdn);
 CREATE INDEX idx_campaign_audience_message_status ON campaign_audience(message_status);
 CREATE INDEX idx_asset_generate_files_template_id ON asset_generate_files(template_id);
 CREATE INDEX idx_asset_generate_files_is_active ON asset_generate_files(is_active);
+CREATE INDEX idx_asset_generate_files_type_of_content ON asset_generate_files(typeOfContent);
 CREATE INDEX idx_campaigns_asset_generation_status ON campaigns(asset_generation_status);
 CREATE INDEX idx_campaign_audience_asset_generation_status ON campaign_audience(asset_generation_status);
+
+-- Messages table indexes
+CREATE INDEX IF NOT EXISTS idx_messages_organization_id ON messages(organization_id);
+CREATE INDEX IF NOT EXISTS idx_messages_campaign_id ON messages(campaign_id);
+CREATE INDEX IF NOT EXISTS idx_messages_campaign_audience_id ON messages(campaign_audience_id);
+CREATE INDEX IF NOT EXISTS idx_messages_whatsapp_id ON messages(whatsapp_message_id);
+CREATE INDEX IF NOT EXISTS idx_messages_from_number ON messages(from_number);
+CREATE INDEX IF NOT EXISTS idx_messages_to_number ON messages(to_number);
+CREATE INDEX IF NOT EXISTS idx_messages_status ON messages(message_status);
+CREATE INDEX IF NOT EXISTS idx_messages_is_incoming ON messages(is_incoming);
+CREATE INDEX IF NOT EXISTS idx_messages_template_name ON messages(template_name);
+CREATE INDEX IF NOT EXISTS idx_messages_created_at ON messages(created_at);
+CREATE INDEX IF NOT EXISTS idx_messages_conversation ON messages(organization_id, from_number, to_number);
+
+-- Webhook events table indexes
+CREATE INDEX IF NOT EXISTS idx_webhook_events_organization_id ON webhook_events(organization_id);
+CREATE INDEX IF NOT EXISTS idx_webhook_events_campaign_id ON webhook_events(campaign_id);
+CREATE INDEX IF NOT EXISTS idx_webhook_events_campaign_audience_id ON webhook_events(campaign_audience_id);
+CREATE INDEX IF NOT EXISTS idx_webhook_events_whatsapp_id ON webhook_events(whatsapp_message_id);
+CREATE INDEX IF NOT EXISTS idx_webhook_events_processed ON webhook_events(processed);
+CREATE INDEX IF NOT EXISTS idx_webhook_events_timestamp ON webhook_events(timestamp);
+CREATE INDEX IF NOT EXISTS idx_webhook_events_from_phone ON webhook_events(from_phone_number);
+CREATE INDEX IF NOT EXISTS idx_webhook_events_event_type ON webhook_events(event_type);
+
+-- Incoming messages table indexes
+CREATE INDEX IF NOT EXISTS idx_incoming_messages_organization_id ON incoming_messages(organization_id);
+CREATE INDEX IF NOT EXISTS idx_incoming_messages_whatsapp_id ON incoming_messages(whatsapp_message_id);
+CREATE INDEX IF NOT EXISTS idx_incoming_messages_from_phone ON incoming_messages(from_phone_number);
+CREATE INDEX IF NOT EXISTS idx_incoming_messages_to_phone ON incoming_messages(to_phone_number);
+CREATE INDEX IF NOT EXISTS idx_incoming_messages_processed ON incoming_messages(processed);
+CREATE INDEX IF NOT EXISTS idx_incoming_messages_context_campaign ON incoming_messages(context_campaign_id);
+CREATE INDEX IF NOT EXISTS idx_incoming_messages_timestamp ON incoming_messages(timestamp);
 
 -- Create trigger function for updating updated_at timestamp
 CREATE OR REPLACE FUNCTION update_updated_at_column()
@@ -352,4 +480,7 @@ CREATE TRIGGER update_campaign_audience_updated_at BEFORE UPDATE ON campaign_aud
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 CREATE TRIGGER update_asset_generate_files_updated_at BEFORE UPDATE ON asset_generate_files
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER update_messages_updated_at BEFORE UPDATE ON messages
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();

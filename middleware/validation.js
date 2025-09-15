@@ -492,6 +492,12 @@ const validateAssetFileCreation = [
       }
       return true;
     }),
+  body("typeOfContent")
+    .trim()
+    .isIn(["public", "personalized"])
+    .withMessage(
+      "typeOfContent is required and must be either 'public' or 'personalized'"
+    ),
   body("description")
     .optional()
     .trim()
@@ -517,6 +523,11 @@ const validateAssetFileUpdate = [
       }
       return true;
     }),
+  body("typeOfContent")
+    .optional()
+    .trim()
+    .isIn(["public", "personalized"])
+    .withMessage("typeOfContent must be either 'public' or 'personalized'"),
   body("description")
     .optional()
     .trim()
@@ -546,6 +557,12 @@ const validateAssetFileVersion = [
       }
       return true;
     }),
+  body("typeOfContent")
+    .trim()
+    .isIn(["public", "personalized"])
+    .withMessage(
+      "typeOfContent is required and must be either 'public' or 'personalized'"
+    ),
   body("description")
     .optional()
     .trim()

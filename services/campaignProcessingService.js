@@ -134,10 +134,10 @@ class CampaignProcessingService {
       });
 
       // Update campaign status to ready_to_launch
-      // await Campaign.update(campaign.id, {
-      //   status: "ready_to_launch",
-      //   // ready_to_launch_at: new Date(),
-      // });
+      await Campaign.update(campaign.id, {
+        status: "ready_to_launch",
+        // ready_to_launch_at: new Date(),
+      });
 
       // Get campaign audience
       const audienceList = await this.getCampaignAudience(campaign.id);
@@ -195,7 +195,7 @@ class CampaignProcessingService {
     try {
       const query = `
         SELECT id, campaign_id, organization_id, name, msisdn, attributes,
-               message_status, created_at
+               message_status, created_at, generated_asset_urls
         FROM campaign_audience
         WHERE campaign_id = $1
        
