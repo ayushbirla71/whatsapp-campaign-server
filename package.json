@@ -11,7 +11,21 @@
     "db:drop": "node scripts/initDatabase.js drop",
     "db:test": "node scripts/initDatabase.js test",
     "db:cleanup": "node scripts/initDatabase.js cleanup",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "db:migrate-webhooks": "node scripts/migrateWebhookTables.js migrate",
+    "db:check-webhooks": "node scripts/migrateWebhookTables.js status",
+    "db:add-caption": "node scripts/addCaptionColumn.js add",
+    "db:check-caption": "node scripts/addCaptionColumn.js check",
+    "db:add-filename": "node scripts/addFilenameColumn.js add",
+    "db:check-filename": "node scripts/addFilenameColumn.js check",
+    "db:check-all-columns": "node scripts/addFilenameColumn.js check-all",
+    "db:migrate-content-type": "node scripts/migrateContentType.js migrate",
+    "db:check-content-type": "node scripts/migrateContentType.js check",
+    "db:add-content-type": "node scripts/addContentTypeColumn.js add",
+    "db:check-content-type-column": "node scripts/addContentTypeColumn.js check",
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "test:campaign-processing": "node scripts/testCampaignProcessing.js",
+    "test:content-type": "node scripts/testContentType.js all",
+    "test:controller-validation": "node scripts/testControllerValidation.js all"
   },
   "keywords": [
     "whatsapp",
@@ -23,6 +37,8 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "aws-sdk": "^2.1692.0",
+    "axios": "^1.6.2",
     "bcryptjs": "^3.0.2",
     "cors": "^2.8.5",
     "crypto-js": "^4.2.0",
@@ -32,6 +48,7 @@
     "express-validator": "^7.2.1",
     "helmet": "^8.1.0",
     "jsonwebtoken": "^9.0.2",
+    "libphonenumber-js": "^1.10.51",
     "morgan": "^1.10.1",
     "pg": "^8.16.3"
   },

@@ -107,16 +107,30 @@ class DatabaseInitializer {
       console.log("🗑️  Dropping database schema...");
 
       const dropSQL = `
+        DROP TABLE IF EXISTS incoming_messages CASCADE;
+        DROP TABLE IF EXISTS messages CASCADE;
+        DROP TABLE IF EXISTS webhook_events CASCADE;
         DROP TABLE IF EXISTS audit_logs CASCADE;
         DROP TABLE IF EXISTS refresh_tokens CASCADE;
+        DROP TABLE IF EXISTS campaign_audience CASCADE;
+        DROP TABLE IF EXISTS campaigns CASCADE;
+        DROP TABLE IF EXISTS audience_master CASCADE;
+        DROP TABLE IF EXISTS asset_generate_files CASCADE;
         DROP TABLE IF EXISTS templates CASCADE;
         DROP TABLE IF EXISTS users CASCADE;
         DROP TABLE IF EXISTS organizations CASCADE;
+        DROP TYPE IF EXISTS webhook_event_type CASCADE;
+        DROP TYPE IF EXISTS content_type CASCADE;
         DROP TYPE IF EXISTS user_role CASCADE;
         DROP TYPE IF EXISTS organization_status CASCADE;
         DROP TYPE IF EXISTS template_status CASCADE;
         DROP TYPE IF EXISTS template_category CASCADE;
         DROP TYPE IF EXISTS template_language CASCADE;
+        DROP TYPE IF EXISTS admin_approval_status CASCADE;
+        DROP TYPE IF EXISTS campaign_status CASCADE;
+        DROP TYPE IF EXISTS campaign_type CASCADE;
+        DROP TYPE IF EXISTS asset_generation_status CASCADE;
+        DROP TYPE IF EXISTS message_status_extended CASCADE;
         DROP FUNCTION IF EXISTS update_updated_at_column() CASCADE;
       `;
 

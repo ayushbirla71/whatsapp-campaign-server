@@ -349,6 +349,228 @@ const validateTemplateRejection = [
   handleValidationErrors,
 ];
 
+// Campaign validation rules
+const validateCampaignCreation = [
+  body("name")
+    .trim()
+    .isLength({ min: 1, max: 255 })
+    .withMessage(
+      "Campaign name is required and must be less than 255 characters"
+    ),
+  body("template_id").isUUID().withMessage("Valid template ID is required"),
+  body("campaign_type")
+    .optional()
+    .isIn(["immediate", "scheduled", "recurring"])
+    .withMessage("Invalid campaign type"),
+  body("scheduled_at")
+    .optional()
+    .isISO8601()
+    .withMessage("Scheduled date must be a valid ISO 8601 date"),
+  body("buffer_hours")
+    .optional()
+    .isInt({ min: 1, max: 168 })
+    .withMessage("Buffer hours must be between 1 and 168 (7 days)"),
+  body("description")
+    .optional()
+    .trim()
+    .isLength({ max: 1000 })
+    .withMessage("Description must be less than 1000 characters"),
+  handleValidationErrors,
+];
+
+const validateCampaignUpdate = [
+  body("name")
+    .optional()
+    .trim()
+    .isLength({ min: 1, max: 255 })
+    .withMessage("Campaign name must be less than 255 characters"),
+  body("description")
+    .optional()
+    .trim()
+    .isLength({ max: 1000 })
+    .withMessage("Description must be less than 1000 characters"),
+  body("scheduled_at")
+    .optional()
+    .isISO8601()
+    .withMessage("Scheduled date must be a valid ISO 8601 date"),
+  body("buffer_hours")
+    .optional()
+    .isInt({ min: 1, max: 168 })
+    .withMessage("Buffer hours must be between 1 and 168 (7 days)"),
+  handleValidationErrors,
+];
+
+const validateCampaignRejection = [
+  body("rejection_reason")
+    .trim()
+    .isLength({ min: 1, max: 500 })
+    .withMessage(
+      "Rejection reason is required and must be less than 500 characters"
+    ),
+  handleValidationErrors,
+];
+
+// Audience validation rules
+const validateAudienceCreation = [
+  body("name")
+    .trim()
+    .isLength({ min: 1, max: 255 })
+    .withMessage("Name is required and must be less than 255 characters"),
+  body("msisdn")
+    .trim()
+    .isLength({ min: 1 })
+    .withMessage("Phone number is required"),
+  body("country_code")
+    .optional()
+    .trim()
+    .isLength({ min: 1, max: 5 })
+    .withMessage("Country code must be less than 5 characters"),
+  body("attributes")
+    .optional()
+    .isObject()
+    .withMessage("Attributes must be an object"),
+  handleValidationErrors,
+];
+
+const validateBulkAudience = [
+  body("audience_list")
+    .isArray({ min: 1 })
+    .withMessage("Audience list is required and must be a non-empty array"),
+  body("audience_list.*.name")
+    .trim()
+    .isLength({ min: 1, max: 255 })
+    .withMessage("Each audience member must have a name (max 255 characters)"),
+  body("audience_list.*.msisdn")
+    .trim()
+    .isLength({ min: 1 })
+    .withMessage("Each audience member must have a phone number"),
+  handleValidationErrors,
+];
+
+const validateMessageStatusUpdate = [
+  body("message_status")
+    .isIn(["pending", "sent", "delivered", "read", "failed"])
+    .withMessage("Invalid message status"),
+  body("whatsapp_message_id")
+    .optional()
+    .trim()
+    .isLength({ min: 1 })
+    .withMessage("WhatsApp message ID cannot be empty"),
+  body("failure_reason")
+    .optional()
+    .trim()
+    .isLength({ max: 500 })
+    .withMessage("Failure reason must be less than 500 characters"),
+  handleValidationErrors,
+];
+
+const validateRemoveAudience = [
+  body("msisdn")
+    .trim()
+    .isLength({ min: 1 })
+    .withMessage("Phone number (msisdn) is required"),
+  handleValidationErrors,
+];
+
+// Asset Generation Files validation rules
+const validateAssetFileCreation = [
+  body("file_name")
+    .trim()
+    .isLength({ min: 1, max: 255 })
+    .withMessage("File name is required and must be less than 255 characters")
+    .matches(/^[a-zA-Z_][a-zA-Z0-9_]*\.py$/)
+    .withMessage(
+      "File name must be a valid Python filename (e.g., asset_generator.py)"
+    ),
+  body("file_content")
+    .trim()
+    .isLength({ min: 1 })
+    .withMessage("File content is required")
+    .custom((value) => {
+      if (!value.includes("def generate_asset(")) {
+        throw new Error("File content must contain a generate_asset function");
+      }
+      return true;
+    }),
+  body("typeOfContent")
+    .trim()
+    .isIn(["public", "personalized"])
+    .withMessage(
+      "typeOfContent is required and must be either 'public' or 'personalized'"
+    ),
+  body("description")
+    .optional()
+    .trim()
+    .isLength({ max: 1000 })
+    .withMessage("Description must be less than 1000 characters"),
+  body("version")
+    .optional()
+    .trim()
+    .matches(/^\d+\.\d+$/)
+    .withMessage("Version must be in format X.Y (e.g., 1.0)"),
+  handleValidationErrors,
+];
+
+const validateAssetFileUpdate = [
+  body("file_content")
+    .optional()
+    .trim()
+    .isLength({ min: 1 })
+    .withMessage("File content cannot be empty")
+    .custom((value) => {
+      if (value && !value.includes("def generate_asset(")) {
+        throw new Error("File content must contain a generate_asset function");
+      }
+      return true;
+    }),
+  body("typeOfContent")
+    .optional()
+    .trim()
+    .isIn(["public", "personalized"])
+    .withMessage("typeOfContent must be either 'public' or 'personalized'"),
+  body("description")
+    .optional()
+    .trim()
+    .isLength({ max: 1000 })
+    .withMessage("Description must be less than 1000 characters"),
+  body("is_active")
+    .optional()
+    .isBoolean()
+    .withMessage("is_active must be a boolean"),
+  handleValidationErrors,
+];
+
+const validateAssetFileVersion = [
+  body("file_name")
+    .trim()
+    .isLength({ min: 1, max: 255 })
+    .withMessage("File name is required and must be less than 255 characters")
+    .matches(/^[a-zA-Z_][a-zA-Z0-9_]*\.py$/)
+    .withMessage("File name must be a valid Python filename"),
+  body("file_content")
+    .trim()
+    .isLength({ min: 1 })
+    .withMessage("File content is required")
+    .custom((value) => {
+      if (!value.includes("def generate_asset(")) {
+        throw new Error("File content must contain a generate_asset function");
+      }
+      return true;
+    }),
+  body("typeOfContent")
+    .trim()
+    .isIn(["public", "personalized"])
+    .withMessage(
+      "typeOfContent is required and must be either 'public' or 'personalized'"
+    ),
+  body("description")
+    .optional()
+    .trim()
+    .isLength({ max: 1000 })
+    .withMessage("Description must be less than 1000 characters"),
+  handleValidationErrors,
+];
+
 module.exports = {
   handleValidationErrors,
   validateUserRegistration,
@@ -362,4 +584,14 @@ module.exports = {
   validateTemplateCreation,
   validateTemplateUpdate,
   validateTemplateRejection,
+  validateCampaignCreation,
+  validateCampaignUpdate,
+  validateCampaignRejection,
+  validateAudienceCreation,
+  validateBulkAudience,
+  validateMessageStatusUpdate,
+  validateRemoveAudience,
+  validateAssetFileCreation,
+  validateAssetFileUpdate,
+  validateAssetFileVersion,
 };
