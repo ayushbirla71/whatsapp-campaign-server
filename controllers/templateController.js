@@ -595,6 +595,175 @@ const syncTemplatesFromWhatsApp = asyncHandler(async (req, res) => {
   }
 });
 
+// Get pending admin approval templates (for super admin and system admin)
+const getPendingAdminApprovalTemplates = asyncHandler(async (req, res) => {
+  if (!["super_admin", "system_admin"].includes(req.user.role)) {
+    throw new AppError("Access denied", 403);
+  }
+
+  const templates = await Template.findPendingAdminApproval();
+
+  res.json({
+    success: true,
+    data: {
+      templates,
+    },
+  });
+});
+
+// Admin approve template for campaign usage
+const adminApproveTemplate = asyncHandler(async (req, res) => {
+  const { templateId } = req.params;
+  const { parameters } = req.body;
+
+  if (!["super_admin", "system_admin"].includes(req.user.role)) {
+    throw new AppError(
+      "Only super admin and system admin can admin approve templates",
+      403
+    );
+  }
+
+  const template = await Template.findById(templateId);
+  if (!template) {
+    throw new AppError("Template not found", 404);
+  }
+
+  if (template.status !== "approved") {
+    throw new AppError("Only approved templates can be admin approved", 400);
+  }
+
+  if (template.approved_by_admin === "approved") {
+    throw new AppError("Template is already admin approved", 400);
+  }
+
+  // Validate parameters if provided
+  if (parameters && typeof parameters !== "object") {
+    throw new AppError("Parameters must be a valid object", 400);
+  }
+
+  const updatedTemplate = await Template.adminApproveTemplate(
+    templateId,
+    req.user.id,
+    parameters || {}
+  );
+
+  logger.info("Template admin approved", {
+    templateId,
+    templateName: template.name,
+    adminApprovedBy: req.user.id,
+    parameters: parameters || {},
+  });
+
+  res.json({
+    success: true,
+    message: "Template admin approved successfully",
+    data: {
+      template: Template.parseTemplate(updatedTemplate),
+    },
+  });
+});
+
+// Admin reject template for campaign usage
+const adminRejectTemplate = asyncHandler(async (req, res) => {
+  const { templateId } = req.params;
+  const { rejection_reason } = req.body;
+
+  if (!["super_admin", "system_admin"].includes(req.user.role)) {
+    throw new AppError(
+      "Only super admin and system admin can admin reject templates",
+      403
+    );
+  }
+
+  if (!rejection_reason || rejection_reason.trim().length === 0) {
+    throw new AppError("Rejection reason is required", 400);
+  }
+
+  const template = await Template.findById(templateId);
+  if (!template) {
+    throw new AppError("Template not found", 404);
+  }
+
+  if (template.status !== "approved") {
+    throw new AppError("Only approved templates can be admin rejected", 400);
+  }
+
+  if (template.approved_by_admin === "rejected") {
+    throw new AppError("Template is already admin rejected", 400);
+  }
+
+  const updatedTemplate = await Template.adminRejectTemplate(
+    templateId,
+    req.user.id,
+    rejection_reason
+  );
+
+  logger.info("Template admin rejected", {
+    templateId,
+    templateName: template.name,
+    adminRejectedBy: req.user.id,
+    rejectionReason: rejection_reason,
+  });
+
+  res.json({
+    success: true,
+    message: "Template admin rejected successfully",
+    data: {
+      template: Template.parseTemplate(updatedTemplate),
+    },
+  });
+});
+
+// Update template parameters
+const updateTemplateParameters = asyncHandler(async (req, res) => {
+  const { templateId } = req.params;
+  const { parameters } = req.body;
+
+  if (!["super_admin", "system_admin"].includes(req.user.role)) {
+    throw new AppError(
+      "Only super admin and system admin can update template parameters",
+      403
+    );
+  }
+
+  const template = await Template.findById(templateId);
+  if (!template) {
+    throw new AppError("Template not found", 404);
+  }
+
+  if (template.status !== "approved") {
+    throw new AppError(
+      "Only approved templates can have parameters updated",
+      400
+    );
+  }
+
+  // Validate parameters
+  if (!parameters || typeof parameters !== "object") {
+    throw new AppError("Parameters must be a valid object", 400);
+  }
+
+  const updatedTemplate = await Template.updateTemplateParameters(
+    templateId,
+    parameters
+  );
+
+  logger.info("Template parameters updated", {
+    templateId,
+    templateName: template.name,
+    updatedBy: req.user.id,
+    parameters,
+  });
+
+  res.json({
+    success: true,
+    message: "Template parameters updated successfully",
+    data: {
+      template: Template.parseTemplate(updatedTemplate),
+    },
+  });
+});
+
 module.exports = {
   getTemplates,
   getTemplateById,
@@ -606,4 +775,8 @@ module.exports = {
   approveTemplate,
   rejectTemplate,
   syncTemplatesFromWhatsApp,
+  getPendingAdminApprovalTemplates,
+  adminApproveTemplate,
+  adminRejectTemplate,
+  updateTemplateParameters,
 };

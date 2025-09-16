@@ -265,6 +265,78 @@ const addAudienceToCampaign = asyncHandler(async (req, res) => {
     );
   }
 
+  // Get campaign template to validate required parameters
+  const Template = require("../models/Template");
+  const template = await Template.findById(campaign.template_id);
+  if (!template) {
+    throw new AppError("Campaign template not found", 404);
+  }
+
+  // Validate audience attributes against template parameters
+  if (template.approved_by_admin === "approved" && template.parameters) {
+    const templateParams =
+      typeof template.parameters === "string"
+        ? JSON.parse(template.parameters)
+        : template.parameters;
+
+    if (templateParams && Object.keys(templateParams).length > 0) {
+      const requiredAttributes = Object.values(templateParams);
+      const validationErrors = [];
+
+      audience_list.forEach((audienceData, index) => {
+        const missingAttributes = [];
+        const audienceAttributes = audienceData.attributes || {};
+
+        requiredAttributes.forEach((requiredAttr) => {
+          if (
+            !audienceAttributes.hasOwnProperty(requiredAttr) ||
+            audienceAttributes[requiredAttr] === null ||
+            audienceAttributes[requiredAttr] === undefined ||
+            audienceAttributes[requiredAttr] === ""
+          ) {
+            missingAttributes.push(requiredAttr);
+          }
+        });
+
+        if (missingAttributes.length > 0) {
+          validationErrors.push({
+            index: index + 1,
+            msisdn: audienceData.msisdn,
+            missingAttributes,
+          });
+        }
+      });
+
+      if (validationErrors.length > 0) {
+        const errorMessage = validationErrors
+          .map(
+            (error) =>
+              `Audience ${error.index} (${
+                error.msisdn
+              }): Missing required attributes [${error.missingAttributes.join(
+                ", "
+              )}]`
+          )
+          .join("; ");
+
+        throw new AppError(
+          `Template parameter validation failed. Required attributes based on template parameters: [${requiredAttributes.join(
+            ", "
+          )}]. Errors: ${errorMessage}`,
+          400
+        );
+      }
+
+      logger.info("Audience template parameter validation passed", {
+        campaignId,
+        templateId: template.id,
+        requiredAttributes,
+        audienceCount: audience_list.length,
+        validatedBy: req.user.id,
+      });
+    }
+  }
+
   const result = await Audience.addToCampaign(
     campaignId,
     campaign.organization_id,

@@ -130,6 +130,13 @@ const createCampaign = asyncHandler(async (req, res) => {
     );
   }
 
+  if (template.approved_by_admin !== "approved") {
+    throw new AppError(
+      "Template must be admin approved before it can be used for campaigns",
+      400
+    );
+  }
+
   // Validate campaign data
   const validationErrors = Campaign.validateCampaign({
     ...campaignData,

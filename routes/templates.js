@@ -25,6 +25,13 @@ router.get(
   templateController.getPendingApprovalTemplates
 );
 
+// Get pending admin approval templates (super admin and system admin only)
+router.get(
+  "/pending-admin-approval",
+  authorize("super_admin", "system_admin"),
+  templateController.getPendingAdminApprovalTemplates
+);
+
 // Organization-specific template routes
 // Get templates for an organization
 router.get(
@@ -104,6 +111,31 @@ router.post(
   validateUUID("templateId"),
   validateTemplateRejection,
   templateController.rejectTemplate
+);
+
+// Admin approve template for campaign usage (super admin and system admin only)
+router.post(
+  "/:templateId/admin-approve",
+  authorize("super_admin", "system_admin"),
+  validateUUID("templateId"),
+  templateController.adminApproveTemplate
+);
+
+// Admin reject template for campaign usage (super admin and system admin only)
+router.post(
+  "/:templateId/admin-reject",
+  authorize("super_admin", "system_admin"),
+  validateUUID("templateId"),
+  validateTemplateRejection,
+  templateController.adminRejectTemplate
+);
+
+// Update template parameters (super admin and system admin only)
+router.put(
+  "/:templateId/parameters",
+  authorize("super_admin", "system_admin"),
+  validateUUID("templateId"),
+  templateController.updateTemplateParameters
 );
 
 // Sync templates from WhatsApp Business API (super admin and system admin only)

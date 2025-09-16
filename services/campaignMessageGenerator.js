@@ -72,7 +72,8 @@ class CampaignMessageGenerator {
       templateMessage.templateParameters = this.generateTemplateParameters(
         template.components,
         audienceData.attributes || {},
-        audienceData.generated_asset_urls || {}
+        audienceData.generated_asset_urls || {},
+        template
       );
     }
 
@@ -89,8 +90,12 @@ class CampaignMessageGenerator {
   generateTextMessage(baseMessage, template, audienceData) {
     let messageContent = template.body_text || "";
 
-    // Replace placeholders with audience data
-    messageContent = this.replacePlaceholders(messageContent, audienceData);
+    // Replace placeholders with audience data using admin-defined parameters
+    messageContent = this.replacePlaceholders(
+      messageContent,
+      audienceData,
+      template.parameters || {}
+    );
 
     return {
       ...baseMessage,
@@ -111,12 +116,20 @@ class CampaignMessageGenerator {
     let mediaUrl = template.header_media_url;
     let caption = template.body_text || "";
 
-    // Replace placeholders in media URL and caption
+    // Replace placeholders in media URL and caption using admin-defined parameters
     if (mediaUrl) {
-      mediaUrl = this.replacePlaceholders(mediaUrl, audienceData);
+      mediaUrl = this.replacePlaceholders(
+        mediaUrl,
+        audienceData,
+        template.parameters || {}
+      );
     }
     if (caption) {
-      caption = this.replacePlaceholders(caption, audienceData);
+      caption = this.replacePlaceholders(
+        caption,
+        audienceData,
+        template.parameters || {}
+      );
     }
 
     const mediaMessage = {
@@ -138,18 +151,33 @@ class CampaignMessageGenerator {
    * Generate template parameters from components and audience attributes
    * @param {Array} components - Template components
    * @param {Object} attributes - Audience attributes
+   * @param {Object} generatedAssetUrls - Generated asset URLs
+   * @param {Object} template - Template object with parameters
    * @returns {Array} Template parameters
    */
-  generateTemplateParameters(components, attributes, generatedAssetUrls) {
+  generateTemplateParameters(
+    components,
+    attributes,
+    generatedAssetUrls,
+    template = {}
+  ) {
     const parameters = [];
 
     components.forEach((component) => {
+      console.log("Component--------------:", component);
+      console.log("Attributes--------------:", attributes);
+      console.log("Template parameters:", template);
+
       if (component.type === "HEADER") {
         if (component.format === "TEXT" && component.text) {
           parameters.push({
             type: "header",
             valueType: "text",
-            value: this.replacePlaceholders(component.text, attributes),
+            value: this.replacePlaceholders(
+              component.text,
+              { attributes },
+              template.parameters || {}
+            ),
           });
         } else if (
           component.format === "IMAGE" ||
@@ -175,10 +203,11 @@ class CampaignMessageGenerator {
           }
         }
       } else if (component.type === "BODY" && component.text) {
-        // Extract placeholders from body text and map to attributes
+        // Extract placeholders from body text and map to attributes using admin-defined parameters
         const bodyParams = this.extractBodyParameters(
           component.text,
-          attributes
+          attributes,
+          template.parameters || {}
         );
         parameters.push(...bodyParams);
       } else if (component.type === "BUTTON" && component.buttons) {
@@ -187,7 +216,11 @@ class CampaignMessageGenerator {
             parameters.push({
               type: "button",
               valueType: "text",
-              value: this.replacePlaceholders(button.url, attributes),
+              value: this.replacePlaceholders(
+                button.url,
+                { attributes },
+                template.parameters || {}
+              ),
               buttonIndex: index,
             });
           }
@@ -199,23 +232,37 @@ class CampaignMessageGenerator {
   }
 
   /**
-   * Extract body parameters from template text
+   * Extract body parameters from template text using admin-defined parameter mappings
    * @param {string} bodyText - Template body text with placeholders
    * @param {Object} attributes - Audience attributes
+   * @param {Object} templateParameters - Admin-defined parameter mappings
    * @returns {Array} Body parameters
    */
-  extractBodyParameters(bodyText, attributes) {
+  extractBodyParameters(bodyText, attributes, templateParameters = {}) {
     const parameters = [];
     const placeholderRegex = /\{\{(\d+)\}\}/g;
     let match;
 
+    console.log("templateParameters", templateParameters);
+
     while ((match = placeholderRegex.exec(bodyText)) !== null) {
       const paramIndex = parseInt(match[1]);
-      const attributeKey = `param_${paramIndex}`;
-      const value =
-        attributes[attributeKey] ||
-        attributes[`body_param_${paramIndex}`] ||
-        `Parameter ${paramIndex}`;
+
+      // Use admin-defined parameter mapping if available
+      let value = `Parameter ${paramIndex}`; // Default fallback
+
+      if (templateParameters[paramIndex]) {
+        const paramMapping = templateParameters[paramIndex];
+        // Get value from audience attributes using admin-defined mapping
+        value = attributes[paramMapping] || paramMapping;
+      } else {
+        // Fallback to legacy parameter mapping
+        const attributeKey = `param_${paramIndex}`;
+        value =
+          attributes[attributeKey] ||
+          attributes[`body_param_${paramIndex}`] ||
+          `Parameter ${paramIndex}`;
+      }
 
       parameters.push({
         type: "body",
@@ -224,16 +271,19 @@ class CampaignMessageGenerator {
       });
     }
 
+    console.log("Extracted body parameters:", parameters);
+
     return parameters;
   }
 
   /**
-   * Replace placeholders in text with audience data
+   * Replace placeholders in text with audience data using admin-defined parameter mappings
    * @param {string} text - Text with placeholders
    * @param {Object} audienceData - Audience data
+   * @param {Object} templateParameters - Admin-defined parameter mappings
    * @returns {string} Text with replaced placeholders
    */
-  replacePlaceholders(text, audienceData) {
+  replacePlaceholders(text, audienceData, templateParameters = {}) {
     if (!text || typeof text !== "string") return text;
 
     let replacedText = text;
@@ -249,9 +299,18 @@ class CampaignMessageGenerator {
       audienceData.msisdn || ""
     );
 
-    // Replace numbered placeholders {{1}}, {{2}}, etc.
+    // Replace numbered placeholders {{1}}, {{2}}, etc. using admin-defined mappings
     const placeholderRegex = /\{\{(\d+)\}\}/g;
     replacedText = replacedText.replace(placeholderRegex, (match, number) => {
+      const paramIndex = parseInt(number);
+
+      // Use admin-defined parameter mapping if available
+      if (templateParameters[paramIndex]) {
+        const paramMapping = templateParameters[paramIndex];
+        return attributes[paramMapping] || paramMapping || match;
+      }
+
+      // Fallback to legacy parameter mapping
       const paramKey = `param_${number}`;
       return (
         attributes[paramKey] || attributes[`body_param_${number}`] || match

@@ -4,18 +4,77 @@
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 -- Create ENUM types for user roles and organization status
-CREATE TYPE user_role AS ENUM ('super_admin', 'system_admin', 'organization_admin', 'organization_user');
-CREATE TYPE organization_status AS ENUM ('active', 'inactive', 'suspended');
-CREATE TYPE template_status AS ENUM ('draft', 'pending_approval', 'approved', 'rejected', 'active', 'paused');
-CREATE TYPE template_category AS ENUM ('AUTHENTICATION', 'MARKETING', 'UTILITY');
-CREATE TYPE template_language AS ENUM ('en', 'en_US', 'es', 'es_ES', 'pt_BR', 'hi', 'ar', 'fr', 'de', 'it', 'ja', 'ko', 'ru', 'zh_CN', 'zh_TW');
-CREATE TYPE campaign_status AS ENUM ('draft', 'pending_approval', 'approved', 'rejected', 'scheduled', 'asset_generation', 'asset_generated', 'ready_to_launch', 'running', 'paused', 'completed', 'cancelled');
-CREATE TYPE campaign_type AS ENUM ('immediate', 'scheduled', 'recurring');
-CREATE TYPE asset_generation_status AS ENUM ('pending', 'processing', 'generated', 'failed');
-CREATE TYPE message_status_extended AS ENUM ('pending', 'asset_generating', 'asset_generated', 'ready_to_send', 'sent', 'delivered', 'read', 'failed');
-CREATE TYPE content_type AS ENUM ('public', 'personalized');
+DO $$ BEGIN
+    CREATE TYPE user_role AS ENUM ('super_admin', 'system_admin', 'organization_admin', 'organization_user');
+EXCEPTION
+    WHEN duplicate_object THEN null;
+END $$;
+
+DO $$ BEGIN
+    CREATE TYPE organization_status AS ENUM ('active', 'inactive', 'suspended');
+EXCEPTION
+    WHEN duplicate_object THEN null;
+END $$;
+
+DO $$ BEGIN
+    CREATE TYPE template_status AS ENUM ('draft', 'pending_approval', 'approved', 'rejected', 'active', 'paused');
+EXCEPTION
+    WHEN duplicate_object THEN null;
+END $$;
+
+DO $$ BEGIN
+    CREATE TYPE template_category AS ENUM ('AUTHENTICATION', 'MARKETING', 'UTILITY');
+EXCEPTION
+    WHEN duplicate_object THEN null;
+END $$;
+
+DO $$ BEGIN
+    CREATE TYPE template_language AS ENUM ('en', 'en_US', 'es', 'es_ES', 'pt_BR', 'hi', 'ar', 'fr', 'de', 'it', 'ja', 'ko', 'ru', 'zh_CN', 'zh_TW');
+EXCEPTION
+    WHEN duplicate_object THEN null;
+END $$;
+
+DO $$ BEGIN
+    CREATE TYPE admin_approval_status AS ENUM ('pending', 'rejected', 'approved');
+EXCEPTION
+    WHEN duplicate_object THEN null;
+END $$;
+DO $$ BEGIN
+    CREATE TYPE campaign_status AS ENUM ('draft', 'pending_approval', 'approved', 'rejected', 'scheduled', 'asset_generation', 'asset_generated', 'ready_to_launch', 'running', 'paused', 'completed', 'cancelled');
+EXCEPTION
+    WHEN duplicate_object THEN null;
+END $$;
+
+DO $$ BEGIN
+    CREATE TYPE campaign_type AS ENUM ('immediate', 'scheduled', 'recurring');
+EXCEPTION
+    WHEN duplicate_object THEN null;
+END $$;
+
+DO $$ BEGIN
+    CREATE TYPE asset_generation_status AS ENUM ('pending', 'processing', 'generated', 'failed');
+EXCEPTION
+    WHEN duplicate_object THEN null;
+END $$;
+
+DO $$ BEGIN
+    CREATE TYPE message_status_extended AS ENUM ('pending', 'asset_generating', 'asset_generated', 'ready_to_send', 'sent', 'delivered', 'read', 'failed');
+EXCEPTION
+    WHEN duplicate_object THEN null;
+END $$;
+
+DO $$ BEGIN
+    CREATE TYPE content_type AS ENUM ('public', 'personalized');
+EXCEPTION
+    WHEN duplicate_object THEN null;
+END $$;
+
 DROP TYPE IF EXISTS webhook_event_type CASCADE;
-CREATE TYPE webhook_event_type AS ENUM ('message_status', 'delivery_receipt', 'read_receipt', 'message_received', 'user_status', 'error', 'interactive_response');
+DO $$ BEGIN
+    CREATE TYPE webhook_event_type AS ENUM ('message_status', 'delivery_receipt', 'read_receipt', 'message_received', 'user_status', 'error', 'interactive_response');
+EXCEPTION
+    WHEN duplicate_object THEN null;
+END $$;
 
 -- Organizations table
 CREATE TABLE organizations (
@@ -103,6 +162,14 @@ CREATE TABLE templates (
     rejected_at TIMESTAMP WITH TIME ZONE,
     rejection_reason TEXT,
     whatsapp_rejected_reason TEXT,
+
+    -- Admin Approval for Campaign Usage
+    approved_by_admin admin_approval_status DEFAULT 'pending',
+    admin_approved_by UUID REFERENCES users(id) ON DELETE SET NULL,
+    admin_approved_at TIMESTAMP WITH TIME ZONE,
+    admin_rejected_at TIMESTAMP WITH TIME ZONE,
+    admin_rejection_reason TEXT,
+    parameters JSONB DEFAULT '{}', -- Parameter mappings defined by admin during approval
 
     -- WhatsApp API Status
     whatsapp_status VARCHAR(50), -- PENDING, APPROVED, REJECTED, DISABLED

@@ -42,11 +42,13 @@ class Template extends BaseModel {
       let query = `
         SELECT t.*, u.first_name as created_by_name, u.last_name as created_by_lastname,
                a.first_name as approved_by_name, a.last_name as approved_by_lastname,
-               r.first_name as rejected_by_name, r.last_name as rejected_by_lastname
+               r.first_name as rejected_by_name, r.last_name as rejected_by_lastname,
+               aa.first_name as admin_approved_by_name, aa.last_name as admin_approved_by_lastname
         FROM templates t
         LEFT JOIN users u ON t.created_by = u.id
         LEFT JOIN users a ON t.approved_by = a.id
         LEFT JOIN users r ON t.rejected_by = r.id
+        LEFT JOIN users aa ON t.admin_approved_by = aa.id
         WHERE t.organization_id = $1
       `;
 
@@ -76,6 +78,12 @@ class Template extends BaseModel {
         paramCount++;
         query += ` AND t.whatsapp_status = $${paramCount}`;
         values.push(filters.whatsapp_status);
+      }
+
+      if (filters.approved_by_admin) {
+        paramCount++;
+        query += ` AND t.approved_by_admin = $${paramCount}`;
+        values.push(filters.approved_by_admin);
       }
 
       query += ` ORDER BY t.created_at DESC`;
@@ -168,6 +176,74 @@ class Template extends BaseModel {
       return await this.update(id, updateData);
     } catch (error) {
       throw new Error(`Error rejecting template: ${error.message}`);
+    }
+  }
+
+  // Admin approval methods for campaign usage
+  async adminApproveTemplate(id, approvedBy, parameters = {}) {
+    try {
+      const updateData = {
+        approved_by_admin: "approved",
+        admin_approved_by: approvedBy,
+        admin_approved_at: new Date(),
+        admin_rejected_at: null,
+        admin_rejection_reason: null,
+        parameters: JSON.stringify(parameters),
+      };
+
+      return await this.update(id, updateData);
+    } catch (error) {
+      throw new Error(`Error admin approving template: ${error.message}`);
+    }
+  }
+
+  async adminRejectTemplate(id, rejectedBy, rejectionReason) {
+    try {
+      const updateData = {
+        approved_by_admin: "rejected",
+        admin_approved_by: null,
+        admin_approved_at: null,
+        admin_rejected_at: new Date(),
+        admin_rejection_reason: rejectionReason,
+        parameters: JSON.stringify({}),
+      };
+
+      return await this.update(id, updateData);
+    } catch (error) {
+      throw new Error(`Error admin rejecting template: ${error.message}`);
+    }
+  }
+
+  async findPendingAdminApproval() {
+    try {
+      const query = `
+        SELECT t.*, u.first_name as created_by_name, u.last_name as created_by_lastname,
+               o.name as organization_name
+        FROM templates t
+        LEFT JOIN users u ON t.created_by = u.id
+        LEFT JOIN organizations o ON t.organization_id = o.id
+        WHERE t.status = 'approved' AND t.approved_by_admin = 'pending'
+        ORDER BY t.approved_at ASC
+      `;
+
+      const result = await this.pool.query(query);
+      return result.rows.map((row) => this.parseTemplate(row));
+    } catch (error) {
+      throw new Error(
+        `Error finding pending admin approval templates: ${error.message}`
+      );
+    }
+  }
+
+  async updateTemplateParameters(id, parameters) {
+    try {
+      const updateData = {
+        parameters: JSON.stringify(parameters),
+      };
+
+      return await this.update(id, updateData);
+    } catch (error) {
+      throw new Error(`Error updating template parameters: ${error.message}`);
     }
   }
 
@@ -299,6 +375,15 @@ class Template extends BaseModel {
         template.components = JSON.parse(template.components);
       } catch (error) {
         template.components = null;
+      }
+    }
+
+    // Parse parameters JSON
+    if (template.parameters && typeof template.parameters === "string") {
+      try {
+        template.parameters = JSON.parse(template.parameters);
+      } catch (error) {
+        template.parameters = {};
       }
     }
 

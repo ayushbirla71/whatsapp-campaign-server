@@ -126,6 +126,7 @@ class DatabaseInitializer {
         DROP TYPE IF EXISTS template_status CASCADE;
         DROP TYPE IF EXISTS template_category CASCADE;
         DROP TYPE IF EXISTS template_language CASCADE;
+        DROP TYPE IF EXISTS admin_approval_status CASCADE;
         DROP TYPE IF EXISTS campaign_status CASCADE;
         DROP TYPE IF EXISTS campaign_type CASCADE;
         DROP TYPE IF EXISTS asset_generation_status CASCADE;

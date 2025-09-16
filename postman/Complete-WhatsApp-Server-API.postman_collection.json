@@ -2,7 +2,7 @@
   "info": {
     "_postman_id": "complete-whatsapp-server-api",
     "name": "Complete WhatsApp Server API",
-    "description": "Complete API collection for WhatsApp Business Server with authentication, users, organizations, and templates management",
+    "description": "Complete API collection for WhatsApp Business Server with authentication, users, organizations, templates management, admin approval workflow, and audience parameter validation",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "item": [
@@ -957,6 +957,156 @@
           }
         },
         {
+          "name": "Get Pending Admin Approval Templates",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    console.log('Pending Admin Approval Templates:', response.data.templates.length);",
+                  "    ",
+                  "    // Save first pending template ID for admin approval",
+                  "    if (response.data.templates && response.data.templates.length > 0) {",
+                  "        const firstTemplate = response.data.templates[0];",
+                  "        pm.environment.set('pendingAdminTemplateId', firstTemplate.id);",
+                  "        console.log('Saved pending admin template ID:', firstTemplate.id);",
+                  "    }",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/templates/pending-admin-approval",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "templates", "pending-admin-approval"]
+            }
+          }
+        },
+        {
+          "name": "Admin Approve Template",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    console.log('Template admin approved successfully');",
+                  "    console.log('Template parameters:', response.data.template.parameters);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"parameters\": {\n        \"1\": \"customer_name\",\n        \"2\": \"order_number\",\n        \"3\": \"pickup_location\"\n    }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/templates/{{pendingAdminTemplateId}}/admin-approve",
+              "host": ["{{baseUrl}}"],
+              "path": [
+                "api",
+                "templates",
+                "{{pendingAdminTemplateId}}",
+                "admin-approve"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Admin Reject Template",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"rejection_reason\": \"Parameter mapping not suitable for campaign usage. Please review the template structure and parameter requirements.\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/templates/{{pendingAdminTemplateId}}/admin-reject",
+              "host": ["{{baseUrl}}"],
+              "path": [
+                "api",
+                "templates",
+                "{{pendingAdminTemplateId}}",
+                "admin-reject"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Update Template Parameters",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    console.log('Template parameters updated successfully');",
+                  "    console.log('Updated parameters:', response.data.template.parameters);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"parameters\": {\n        \"1\": \"customer_name\",\n        \"2\": \"order_number\",\n        \"3\": \"pickup_location\",\n        \"4\": \"delivery_date\"\n    }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/templates/{{templateId}}/parameters",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "templates", "{{templateId}}", "parameters"]
+            }
+          }
+        },
+        {
           "name": "Delete Template",
           "request": {
             "method": "DELETE",
@@ -1101,7 +1251,26 @@
           }
         },
         {
-          "name": "Add Audience to Campaign",
+          "name": "Add Audience to Campaign (Valid Parameters)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    const response = pm.response.json();",
+                  "    console.log('Audience added successfully');",
+                  "    console.log('Total processed:', response.data.total_processed);",
+                  "    console.log('Successful:', response.data.successful);",
+                  "    console.log('Failed:', response.data.failed);",
+                  "} else if (pm.response.code === 400) {",
+                  "    const response = pm.response.json();",
+                  "    console.log('Validation failed:', response.message);",
+                  "}"
+                ]
+              }
+            }
+          ],
           "request": {
             "method": "POST",
             "header": [
@@ -1116,7 +1285,52 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n    \"audience_list\": [\n        {\n            \"name\": \"John Doe\",\n            \"msisdn\": \"+1234567890\",\n            \"attributes\": {\n                \"account_no\": \"ACC001\",\n                \"city\": \"New York\",\n                \"age\": \"30\"\n            }\n        },\n        {\n            \"name\": \"Jane Smith\",\n            \"msisdn\": \"+1234567891\",\n            \"attributes\": {\n                \"account_no\": \"ACC002\",\n                \"city\": \"Los Angeles\",\n                \"age\": \"25\"\n            }\n        },\n        {\n            \"name\": \"Bob Johnson\",\n            \"msisdn\": \"+1234567892\",\n            \"attributes\": {\n                \"account_no\": \"ACC003\",\n                \"city\": \"Chicago\",\n                \"age\": \"35\"\n            }\n        }\n    ]\n}"
+              "raw": "{\n    \"audience_list\": [\n        {\n            \"name\": \"John Doe\",\n            \"msisdn\": \"+1234567890\",\n            \"attributes\": {\n                \"customer_name\": \"John Doe\",\n                \"order_number\": \"ORD-12345\",\n                \"pickup_location\": \"Downtown Store\",\n                \"email\": \"john@example.com\"\n            }\n        },\n        {\n            \"name\": \"Jane Smith\",\n            \"msisdn\": \"+1234567891\",\n            \"attributes\": {\n                \"customer_name\": \"Jane Smith\",\n                \"order_number\": \"ORD-12346\",\n                \"pickup_location\": \"Mall Store\",\n                \"phone\": \"+1234567891\"\n            }\n        }\n    ]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/campaigns/{{campaignId}}/audience",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "campaigns", "{{campaignId}}", "audience"]
+            }
+          }
+        },
+        {
+          "name": "Add Audience to Campaign (Invalid Parameters - Missing Required)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 400) {",
+                  "    const response = pm.response.json();",
+                  "    console.log('Expected validation error:', response.message);",
+                  "    ",
+                  "    // Check if the error message contains parameter validation info",
+                  "    if (response.message.includes('Template parameter validation failed')) {",
+                  "        console.log('✓ Parameter validation working correctly');",
+                  "    }",
+                  "} else {",
+                  "    console.log('Unexpected response code:', pm.response.code);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"audience_list\": [\n        {\n            \"name\": \"Bob Wilson\",\n            \"msisdn\": \"+1234567892\",\n            \"attributes\": {\n                \"customer_name\": \"Bob Wilson\",\n                \"email\": \"bob@example.com\"\n            }\n        },\n        {\n            \"name\": \"Alice Brown\",\n            \"msisdn\": \"+1234567893\",\n            \"attributes\": {\n                \"customer_name\": \"Alice Brown\",\n                \"order_number\": \"\",\n                \"pickup_location\": null\n            }\n        }\n    ]\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/api/campaigns/{{campaignId}}/audience",
@@ -1690,6 +1904,11 @@
     {
       "key": "baseUrl",
       "value": "http://localhost:3000"
+    },
+    {
+      "key": "pendingAdminTemplateId",
+      "value": "",
+      "description": "Template ID pending admin approval (auto-populated from API responses)"
     }
   ]
 }

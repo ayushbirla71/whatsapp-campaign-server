@@ -102,7 +102,7 @@ class CampaignProcessingService {
       const query = `
         SELECT c.*, t.name as template_name, t.category as template_category,
                t.language as template_language, t.components, t.body_text,
-               t.header_type, t.header_media_url, t.footer_text
+               t.header_type, t.header_media_url, t.footer_text, t.parameters
         FROM campaigns c
         LEFT JOIN templates t ON c.template_id = t.id
         WHERE c.status = 'asset_generated'
@@ -160,6 +160,7 @@ class CampaignProcessingService {
         header_type: campaign.header_type,
         header_media_url: campaign.header_media_url,
         footer_text: campaign.footer_text,
+        parameters: campaign.parameters,
       };
 
       // Generate and send messages to SQS
@@ -253,6 +254,9 @@ class CampaignProcessingService {
 
           // Update audience status to ready_to_send
           await Audience.updateMessageStatus(audienceData.id, "ready_to_send");
+          console.log("Message payload:", messagePayload);
+
+          console.log("Messages payload:", messagePayload.templateParameters);
 
           // Send batch when we reach the limit
           if (messages.length >= sqsBatchSize) {
@@ -291,6 +295,10 @@ class CampaignProcessingService {
    * @param {Array} messages - Array of message payloads
    */
   async sendMessageBatch(messages) {
+    console.log("Sending message batch to SQS", {
+      messageCount: messages.length,
+    });
+    console.log("Message payload:", messages);
     try {
       const result = await sqsService.sendMessageBatch(messages, {
         messageGroupId: process.env.SQS_MESSAGE_GROUP_ID || "whatsapp-messages",
