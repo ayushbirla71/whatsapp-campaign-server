@@ -4,13 +4,7 @@ const EncryptionUtil = require("../utils/encryption");
 class Organization extends BaseModel {
   constructor() {
     super("organizations");
-    this.encryptedFields = [
-      "whatsapp_business_account_id",
-      "whatsapp_access_token",
-      "whatsapp_phone_number_id",
-      "whatsapp_webhook_verify_token",
-      "whatsapp_app_secret",
-    ];
+    this.encryptedFields = ["whatsapp_access_token", "whatsapp_app_secret"];
   }
 
   async create(organizationData) {

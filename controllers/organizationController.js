@@ -1,7 +1,7 @@
-const Organization = require('../models/Organization');
-const User = require('../models/User');
-const { AppError, asyncHandler } = require('../middleware/errorHandler');
-const logger = require('../utils/logger');
+const Organization = require("../models/Organization");
+const User = require("../models/User");
+const { AppError, asyncHandler } = require("../middleware/errorHandler");
+const logger = require("../utils/logger");
 
 // Get all organizations
 const getOrganizations = asyncHandler(async (req, res) => {
@@ -12,7 +12,7 @@ const getOrganizations = asyncHandler(async (req, res) => {
   if (status) conditions.status = status;
 
   // Organization admin can only see their own organization
-  if (req.user.role === 'organization_admin') {
+  if (req.user.role === "organization_admin") {
     conditions.id = req.user.organization_id;
   }
 
@@ -27,9 +27,9 @@ const getOrganizations = asyncHandler(async (req, res) => {
         page: parseInt(page),
         limit: parseInt(limit),
         total,
-        pages: Math.ceil(total / limit)
-      }
-    }
+        pages: Math.ceil(total / limit),
+      },
+    },
   });
 });
 
@@ -38,37 +38,44 @@ const getOrganizationById = asyncHandler(async (req, res) => {
   const { organizationId } = req.params;
 
   // Check permissions
-  if (req.user.role === 'organization_admin' && req.user.organization_id !== organizationId) {
-    throw new AppError('Access denied to this organization', 403);
+  if (
+    req.user.role === "organization_admin" &&
+    req.user.organization_id !== organizationId
+  ) {
+    throw new AppError("Access denied to this organization", 403);
   }
 
   const organization = await Organization.findById(organizationId);
   if (!organization) {
-    throw new AppError('Organization not found', 404);
+    throw new AppError("Organization not found", 404);
   }
 
   res.json({
     success: true,
     data: {
-      organization
-    }
+      organization,
+    },
   });
 });
 
 // Create new organization
 const createOrganization = asyncHandler(async (req, res) => {
-  const { 
-    name, 
-    description, 
-    whatsapp_business_account_id, 
-    whatsapp_access_token, 
-    whatsapp_phone_number_id 
+  const {
+    name,
+    description,
+    whatsapp_business_account_id,
+    whatsapp_access_token,
+    whatsapp_phone_number_id,
+    whatsapp_webhook_verify_token,
+    whatsapp_webhook_url,
+    whatsapp_app_id,
+    whatsapp_app_secret,
   } = req.body;
 
   // Check if organization name already exists
   const existingOrg = await Organization.findByName(name);
   if (existingOrg) {
-    throw new AppError('Organization with this name already exists', 409);
+    throw new AppError("Organization with this name already exists", 409);
   }
 
   const organizationData = {
@@ -77,24 +84,28 @@ const createOrganization = asyncHandler(async (req, res) => {
     whatsapp_business_account_id,
     whatsapp_access_token,
     whatsapp_phone_number_id,
-    created_by: req.user.id
+    whatsapp_webhook_verify_token,
+    whatsapp_webhook_url,
+    whatsapp_app_id,
+    whatsapp_app_secret,
+    created_by: req.user.id,
   };
 
   const newOrganization = await Organization.create(organizationData);
 
-  logger.info('Organization created successfully', {
+  logger.info("Organization created successfully", {
     organizationId: newOrganization.id,
     organizationName: newOrganization.name,
     createdBy: req.user.id,
-    createdByEmail: req.user.email
+    createdByEmail: req.user.email,
   });
 
   res.status(201).json({
     success: true,
-    message: 'Organization created successfully',
+    message: "Organization created successfully",
     data: {
-      organization: newOrganization
-    }
+      organization: newOrganization,
+    },
   });
 });
 
@@ -104,20 +115,23 @@ const updateOrganization = asyncHandler(async (req, res) => {
   const updateData = req.body;
 
   // Check permissions
-  if (req.user.role === 'organization_admin' && req.user.organization_id !== organizationId) {
-    throw new AppError('Access denied to this organization', 403);
+  if (
+    req.user.role === "organization_admin" &&
+    req.user.organization_id !== organizationId
+  ) {
+    throw new AppError("Access denied to this organization", 403);
   }
 
   const organization = await Organization.findById(organizationId);
   if (!organization) {
-    throw new AppError('Organization not found', 404);
+    throw new AppError("Organization not found", 404);
   }
 
   // Check if new name conflicts with existing organization
   if (updateData.name && updateData.name !== organization.name) {
     const existingOrg = await Organization.findByName(updateData.name);
     if (existingOrg) {
-      throw new AppError('Organization with this name already exists', 409);
+      throw new AppError("Organization with this name already exists", 409);
     }
   }
 
@@ -125,21 +139,24 @@ const updateOrganization = asyncHandler(async (req, res) => {
   delete updateData.created_by;
   delete updateData.created_at;
 
-  const updatedOrganization = await Organization.update(organizationId, updateData);
+  const updatedOrganization = await Organization.update(
+    organizationId,
+    updateData
+  );
 
-  logger.info('Organization updated successfully', {
+  logger.info("Organization updated successfully", {
     organizationId,
     updatedBy: req.user.id,
     updatedByEmail: req.user.email,
-    changes: updateData
+    changes: updateData,
   });
 
   res.json({
     success: true,
-    message: 'Organization updated successfully',
+    message: "Organization updated successfully",
     data: {
-      organization: updatedOrganization
-    }
+      organization: updatedOrganization,
+    },
   });
 });
 
@@ -149,27 +166,27 @@ const deleteOrganization = asyncHandler(async (req, res) => {
 
   const organization = await Organization.findById(organizationId);
   if (!organization) {
-    throw new AppError('Organization not found', 404);
+    throw new AppError("Organization not found", 404);
   }
 
   // Check if organization has users
   const users = await User.findByOrganization(organizationId);
   if (users.length > 0) {
-    throw new AppError('Cannot delete organization with existing users', 400);
+    throw new AppError("Cannot delete organization with existing users", 400);
   }
 
   await Organization.delete(organizationId);
 
-  logger.info('Organization deleted successfully', {
+  logger.info("Organization deleted successfully", {
     organizationId,
     organizationName: organization.name,
     deletedBy: req.user.id,
-    deletedByEmail: req.user.email
+    deletedByEmail: req.user.email,
   });
 
   res.json({
     success: true,
-    message: 'Organization deleted successfully'
+    message: "Organization deleted successfully",
   });
 });
 
@@ -179,58 +196,68 @@ const getOrganizationUsers = asyncHandler(async (req, res) => {
   const { role } = req.query;
 
   // Check permissions
-  if (req.user.role === 'organization_admin' && req.user.organization_id !== organizationId) {
-    throw new AppError('Access denied to this organization', 403);
+  if (
+    req.user.role === "organization_admin" &&
+    req.user.organization_id !== organizationId
+  ) {
+    throw new AppError("Access denied to this organization", 403);
   }
 
   const organization = await Organization.findById(organizationId);
   if (!organization) {
-    throw new AppError('Organization not found', 404);
+    throw new AppError("Organization not found", 404);
   }
 
   const users = await User.findByOrganization(organizationId, role);
-  const sanitizedUsers = users.map(user => User.sanitizeUser(user));
+  const sanitizedUsers = users.map((user) => User.sanitizeUser(user));
 
   res.json({
     success: true,
     data: {
-      users: sanitizedUsers
-    }
+      users: sanitizedUsers,
+    },
   });
 });
 
 // Update WhatsApp Business configuration
 const updateWhatsAppConfig = asyncHandler(async (req, res) => {
   const { organizationId } = req.params;
-  const { whatsapp_business_account_id, whatsapp_access_token, whatsapp_phone_number_id } = req.body;
+  const {
+    whatsapp_business_account_id,
+    whatsapp_access_token,
+    whatsapp_phone_number_id,
+  } = req.body;
 
   // Check permissions
-  if (req.user.role === 'organization_admin' && req.user.organization_id !== organizationId) {
-    throw new AppError('Access denied to this organization', 403);
+  if (
+    req.user.role === "organization_admin" &&
+    req.user.organization_id !== organizationId
+  ) {
+    throw new AppError("Access denied to this organization", 403);
   }
 
   const organization = await Organization.findById(organizationId);
   if (!organization) {
-    throw new AppError('Organization not found', 404);
+    throw new AppError("Organization not found", 404);
   }
 
   const whatsappConfig = {
     whatsapp_business_account_id,
     whatsapp_access_token,
-    whatsapp_phone_number_id
+    whatsapp_phone_number_id,
   };
 
   await Organization.updateWhatsAppConfig(organizationId, whatsappConfig);
 
-  logger.info('WhatsApp configuration updated', {
+  logger.info("WhatsApp configuration updated", {
     organizationId,
     updatedBy: req.user.id,
-    updatedByEmail: req.user.email
+    updatedByEmail: req.user.email,
   });
 
   res.json({
     success: true,
-    message: 'WhatsApp configuration updated successfully'
+    message: "WhatsApp configuration updated successfully",
   });
 });
 
@@ -239,13 +266,16 @@ const getWhatsAppConfig = asyncHandler(async (req, res) => {
   const { organizationId } = req.params;
 
   // Check permissions
-  if (req.user.role === 'organization_admin' && req.user.organization_id !== organizationId) {
-    throw new AppError('Access denied to this organization', 403);
+  if (
+    req.user.role === "organization_admin" &&
+    req.user.organization_id !== organizationId
+  ) {
+    throw new AppError("Access denied to this organization", 403);
   }
 
   const organization = await Organization.findById(organizationId);
   if (!organization) {
-    throw new AppError('Organization not found', 404);
+    throw new AppError("Organization not found", 404);
   }
 
   const config = await Organization.getWhatsAppConfig(organizationId);
@@ -253,8 +283,8 @@ const getWhatsAppConfig = asyncHandler(async (req, res) => {
   res.json({
     success: true,
     data: {
-      whatsapp_config: config
-    }
+      whatsapp_config: config,
+    },
   });
 });
 
@@ -266,5 +296,5 @@ module.exports = {
   deleteOrganization,
   getOrganizationUsers,
   updateWhatsAppConfig,
-  getWhatsAppConfig
+  getWhatsAppConfig,
 };
