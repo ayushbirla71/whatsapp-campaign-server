@@ -191,6 +191,9 @@ CREATE TABLE templates (
     synced_at TIMESTAMP WITH TIME ZONE,
     synced_by UUID REFERENCES users(id) ON DELETE SET NULL,
 
+    -- Asset Generation Flag
+    is_asset_generation_file BOOLEAN DEFAULT false,
+
     -- Constraints
     CONSTRAINT templates_name_org_unique UNIQUE (name, organization_id, language),
     CONSTRAINT templates_whatsapp_id_unique UNIQUE (whatsapp_template_id)
@@ -420,6 +423,9 @@ CREATE TABLE messages (
 
     -- Interactive message tracking (for buttons, lists, etc.)
     interaction_data JSONB,
+
+    -- Retry tracking
+    retry_count INTEGER DEFAULT 0,
 
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP

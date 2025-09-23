@@ -13,13 +13,23 @@ class Message extends BaseModel {
   async create(messageData) {
     try {
       // Ensure template_parameters is stored as JSON
-      if (messageData.template_parameters && typeof messageData.template_parameters === "object") {
-        messageData.template_parameters = JSON.stringify(messageData.template_parameters);
+      if (
+        messageData.template_parameters &&
+        typeof messageData.template_parameters === "object"
+      ) {
+        messageData.template_parameters = JSON.stringify(
+          messageData.template_parameters
+        );
       }
 
       // Ensure interaction_data is stored as JSON
-      if (messageData.interaction_data && typeof messageData.interaction_data === "object") {
-        messageData.interaction_data = JSON.stringify(messageData.interaction_data);
+      if (
+        messageData.interaction_data &&
+        typeof messageData.interaction_data === "object"
+      ) {
+        messageData.interaction_data = JSON.stringify(
+          messageData.interaction_data
+        );
       }
 
       return await super.create(messageData);
@@ -112,9 +122,11 @@ class Message extends BaseModel {
       }
 
       const result = await this.pool.query(query, values);
-      return result.rows.map(row => this.parseMessage(row));
+      return result.rows.map((row) => this.parseMessage(row));
     } catch (error) {
-      throw new Error(`Error finding messages by organization: ${error.message}`);
+      throw new Error(
+        `Error finding messages by organization: ${error.message}`
+      );
     }
   }
 
@@ -161,7 +173,7 @@ class Message extends BaseModel {
       }
 
       const result = await this.pool.query(query, values);
-      return result.rows.map(row => this.parseMessage(row));
+      return result.rows.map((row) => this.parseMessage(row));
     } catch (error) {
       throw new Error(`Error finding conversation: ${error.message}`);
     }
@@ -178,7 +190,7 @@ class Message extends BaseModel {
     try {
       const updateData = {
         message_status: status,
-        ...additionalData
+        ...additionalData,
       };
 
       // Set timestamp based on status
@@ -219,7 +231,9 @@ class Message extends BaseModel {
       const result = await this.pool.query(query, [whatsappMessageId]);
       return result.rows.length > 0 ? this.parseMessage(result.rows[0]) : null;
     } catch (error) {
-      throw new Error(`Error finding message by WhatsApp message ID: ${error.message}`);
+      throw new Error(
+        `Error finding message by WhatsApp message ID: ${error.message}`
+      );
     }
   }
 
@@ -282,7 +296,10 @@ class Message extends BaseModel {
     const message = { ...messageRow };
 
     // Parse template_parameters JSON
-    if (message.template_parameters && typeof message.template_parameters === "string") {
+    if (
+      message.template_parameters &&
+      typeof message.template_parameters === "string"
+    ) {
       try {
         message.template_parameters = JSON.parse(message.template_parameters);
       } catch (error) {
@@ -291,7 +308,10 @@ class Message extends BaseModel {
     }
 
     // Parse interaction_data JSON
-    if (message.interaction_data && typeof message.interaction_data === "string") {
+    if (
+      message.interaction_data &&
+      typeof message.interaction_data === "string"
+    ) {
       try {
         message.interaction_data = JSON.parse(message.interaction_data);
       } catch (error) {
@@ -300,6 +320,86 @@ class Message extends BaseModel {
     }
 
     return message;
+  }
+
+  /**
+   * Find failed messages eligible for retry
+   * @param {number} maxRetryCount - Maximum retry count
+   * @param {number} retryAfterHours - Hours to wait before retry
+   * @param {number} limit - Maximum number of messages to return
+   * @returns {Promise<Array>} Array of failed messages
+   */
+  async findFailedMessagesForRetry(
+    maxRetryCount = 3,
+    retryAfterHours = 2,
+    limit = 100
+  ) {
+    try {
+      const cutoffTime = new Date();
+      // cutoffTime.setHours(cutoffTime.getHours() - retryAfterHours);
+
+      const query = `
+        SELECT m.*, c.id as campaign_id, c.organization_id, c.template_id,
+               t.name as template_name, t.category as template_category,
+               t.language as template_language, t.components, t.body_text,
+               t.header_type, t.header_media_url, t.footer_text, t.parameters,
+               ca.attributes, ca.generated_asset_urls, ca.name as audience_name,
+               ca.msisdn
+        FROM messages m
+        LEFT JOIN campaigns c ON m.campaign_id = c.id
+        LEFT JOIN templates t ON c.template_id = t.id
+        LEFT JOIN campaign_audience ca ON m.campaign_audience_id = ca.id
+        WHERE m.message_status = 'failed'
+        AND m.retry_count < $1
+        AND m.updated_at <= $2
+        AND m.campaign_id IS NOT NULL
+        ORDER BY m.updated_at ASC
+        LIMIT $3
+      `;
+
+      const result = await this.pool.query(query, [
+        maxRetryCount,
+        cutoffTime,
+        limit,
+      ]);
+      return result.rows;
+    } catch (error) {
+      throw new Error(
+        `Error finding failed messages for retry: ${error.message}`
+      );
+    }
+  }
+
+  /**
+   * Update message retry status
+   * @param {string} messageId - Message ID
+   * @param {number} retryCount - New retry count
+   * @param {string} status - New message status
+   * @param {string} failureReason - Optional failure reason
+   * @returns {Promise<Object>} Updated message
+   */
+  async updateRetryStatus(messageId, retryCount, status, failureReason = null) {
+    try {
+      const query = `
+        UPDATE messages
+        SET retry_count = $1,
+            message_status = $2,
+            failure_reason = COALESCE($3, failure_reason),
+            updated_at = CURRENT_TIMESTAMP
+        WHERE id = $4
+        RETURNING *
+      `;
+
+      const result = await this.pool.query(query, [
+        retryCount,
+        status,
+        failureReason,
+        messageId,
+      ]);
+      return result.rows.length > 0 ? this.parseMessage(result.rows[0]) : null;
+    } catch (error) {
+      throw new Error(`Error updating message retry status: ${error.message}`);
+    }
   }
 
   /**

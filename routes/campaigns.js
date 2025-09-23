@@ -210,4 +210,11 @@ router.get(
   campaignController.getSQSStatus
 );
 
+// Retry failed messages
+router.post(
+  "/retry-failed-messages",
+  authorize("super_admin", "system_admin"),
+  campaignController.retryFailedMessages
+);
+
 module.exports = router;

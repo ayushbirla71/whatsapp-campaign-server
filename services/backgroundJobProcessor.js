@@ -1,11 +1,13 @@
-const campaignProcessingService = require('./campaignProcessingService');
-const logger = require('../utils/logger');
+const campaignProcessingService = require("./campaignProcessingService");
+const messageRetryService = require("./messageRetryService");
+const logger = require("../utils/logger");
 
 class BackgroundJobProcessor {
   constructor() {
     this.isRunning = false;
     this.intervalId = null;
-    this.processingInterval = parseInt(process.env.BACKGROUND_JOB_INTERVAL) || 60000; // 1 minute default
+    this.processingInterval =
+      parseInt(process.env.BACKGROUND_JOB_INTERVAL) || 60000; // 1 minute default
   }
 
   /**
@@ -13,17 +15,20 @@ class BackgroundJobProcessor {
    */
   start() {
     if (this.isRunning) {
-      logger.warn('Background job processor is already running');
+      logger.warn("Background job processor is already running");
       return;
     }
 
     this.isRunning = true;
-    logger.info('Starting background job processor', {
-      processingInterval: this.processingInterval
+    logger.info("Starting background job processor", {
+      processingInterval: this.processingInterval,
     });
 
     // Start the campaign processing service
     campaignProcessingService.start();
+
+    // Start the message retry service
+    messageRetryService.start();
 
     // Set up periodic health checks and monitoring
     this.intervalId = setInterval(() => {
@@ -39,15 +44,18 @@ class BackgroundJobProcessor {
    */
   stop() {
     if (!this.isRunning) {
-      logger.warn('Background job processor is not running');
+      logger.warn("Background job processor is not running");
       return;
     }
 
     this.isRunning = false;
-    logger.info('Stopping background job processor');
+    logger.info("Stopping background job processor");
 
     // Stop the campaign processing service
     campaignProcessingService.stop();
+
+    // Stop the message retry service
+    messageRetryService.stop();
 
     // Clear the interval
     if (this.intervalId) {
@@ -55,7 +63,7 @@ class BackgroundJobProcessor {
       this.intervalId = null;
     }
 
-    logger.info('Background job processor stopped');
+    logger.info("Background job processor stopped");
   }
 
   /**
@@ -63,26 +71,34 @@ class BackgroundJobProcessor {
    */
   async performHealthCheck() {
     try {
-      logger.debug('Performing background services health check');
+      logger.debug("Performing background services health check");
 
       // Check if campaign processing service is still running
       if (!campaignProcessingService.isProcessing) {
-        logger.warn('Campaign processing service is not running, restarting...');
+        logger.warn(
+          "Campaign processing service is not running, restarting..."
+        );
         campaignProcessingService.start();
       }
 
-      // Check SQS connectivity
-      const sqsService = require('./sqsService');
-      const isSQSConfigured = await sqsService.isConfigured();
-      
-      if (!isSQSConfigured) {
-        logger.warn('SQS service is not properly configured');
+      // Check if message retry service is still running
+      if (!messageRetryService.isRunning) {
+        logger.warn("Message retry service is not running, restarting...");
+        messageRetryService.start();
       }
 
-      logger.debug('Health check completed successfully');
+      // Check SQS connectivity
+      const sqsService = require("./sqsService");
+      const isSQSConfigured = await sqsService.isConfigured();
+
+      if (!isSQSConfigured) {
+        logger.warn("SQS service is not properly configured");
+      }
+
+      logger.debug("Health check completed successfully");
     } catch (error) {
-      logger.error('Error during health check', {
-        error: error.message
+      logger.error("Error during health check", {
+        error: error.message,
       });
     }
   }
@@ -92,14 +108,16 @@ class BackgroundJobProcessor {
    */
   setupGracefulShutdown() {
     const gracefulShutdown = (signal) => {
-      logger.info(`Received ${signal}, shutting down background job processor gracefully`);
+      logger.info(
+        `Received ${signal}, shutting down background job processor gracefully`
+      );
       this.stop();
       process.exit(0);
     };
 
-    process.on('SIGTERM', gracefulShutdown);
-    process.on('SIGINT', gracefulShutdown);
-    process.on('SIGUSR2', gracefulShutdown); // For nodemon
+    process.on("SIGTERM", gracefulShutdown);
+    process.on("SIGINT", gracefulShutdown);
+    process.on("SIGUSR2", gracefulShutdown); // For nodemon
   }
 
   /**
@@ -113,8 +131,9 @@ class BackgroundJobProcessor {
       campaignProcessingStatus: {
         isProcessing: campaignProcessingService.isProcessing,
         batchSize: campaignProcessingService.batchSize,
-        processingInterval: campaignProcessingService.processingInterval
-      }
+        processingInterval: campaignProcessingService.processingInterval,
+      },
+      messageRetryStatus: messageRetryService.getStatus(),
     };
   }
 
@@ -124,12 +143,29 @@ class BackgroundJobProcessor {
    */
   async triggerCampaignProcessing() {
     try {
-      logger.info('Manually triggering campaign processing');
+      logger.info("Manually triggering campaign processing");
       await campaignProcessingService.processCampaigns();
-      logger.info('Manual campaign processing completed');
+      logger.info("Manual campaign processing completed");
     } catch (error) {
-      logger.error('Error during manual campaign processing', {
-        error: error.message
+      logger.error("Error during manual campaign processing", {
+        error: error.message,
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * Manually trigger message retry processing
+   * @returns {Promise<void>}
+   */
+  async triggerMessageRetryProcessing() {
+    try {
+      logger.info("Manually triggering message retry processing");
+      await messageRetryService.triggerRetryProcessing();
+      logger.info("Manual message retry processing completed");
+    } catch (error) {
+      logger.error("Error during manual message retry processing", {
+        error: error.message,
       });
       throw error;
     }

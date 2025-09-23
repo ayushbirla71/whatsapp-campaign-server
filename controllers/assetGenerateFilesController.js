@@ -145,6 +145,8 @@ const createAssetFile = asyncHandler(async (req, res) => {
     newAssetFileData
   );
 
+  await Template.update(templateId, { is_asset_generation_file: true });
+
   logger.info("Asset file created successfully", {
     assetFileId: newAssetFile.id,
     fileName: newAssetFile.file_name,
@@ -358,6 +360,7 @@ const deactivateAssetFile = asyncHandler(async (req, res) => {
   const deactivatedAssetFile = await AssetGenerateFiles.deactivateAssetFile(
     assetFileId
   );
+  await Template.update(template.id, { is_asset_generation_file: false });
 
   logger.info("Asset file deactivated successfully", {
     assetFileId,

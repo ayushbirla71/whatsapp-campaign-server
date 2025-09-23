@@ -697,6 +697,46 @@ const getSQSStatus = asyncHandler(async (req, res) => {
   }
 });
 
+// Retry failed messages
+const retryFailedMessages = asyncHandler(async (req, res) => {
+  if (!["super_admin", "system_admin"].includes(req.user.role)) {
+    throw new AppError(
+      "Only super admin and system admin can retry failed messages",
+      403
+    );
+  }
+
+  try {
+    logger.info("Manual retry of failed messages triggered", {
+      triggeredBy: req.user.id,
+      userEmail: req.user.email,
+    });
+
+    // Get background job processor and trigger retry processing
+    const backgroundJobProcessor = require("../services/backgroundJobProcessor");
+    await backgroundJobProcessor.triggerMessageRetryProcessing();
+
+    res.json({
+      success: true,
+      message: "Failed message retry processing triggered successfully",
+      data: {
+        triggeredAt: new Date().toISOString(),
+        triggeredBy: req.user.email,
+      },
+    });
+  } catch (error) {
+    logger.error("Error triggering failed message retry", {
+      error: error.message,
+      triggeredBy: req.user.id,
+    });
+
+    throw new AppError(
+      `Failed to trigger message retry: ${error.message}`,
+      500
+    );
+  }
+});
+
 module.exports = {
   getCampaigns,
   getCampaignById,
@@ -713,4 +753,5 @@ module.exports = {
   getCampaignStats,
   processCampaignMessages,
   getSQSStatus,
+  retryFailedMessages,
 };
