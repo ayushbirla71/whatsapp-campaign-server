@@ -120,10 +120,16 @@ class MessageRetryService {
     try {
       const result = await Message.findFailedMessagesForRetry(
         this.maxRetryCount,
-        this.retryAfterHours,
+        0, // Pass 0 since we'll handle timing logic here
         100
       );
-      return result.map((row) => this.parseMessageForRetry(row));
+
+      // Filter messages based on progressive retry delays
+      const eligibleMessages = result
+        .map((row) => this.parseMessageForRetry(row))
+        .filter((message) => this.isEligibleForRetry(message));
+
+      return eligibleMessages;
     } catch (error) {
       throw new Error(
         `Error finding failed messages for retry: ${error.message}`
@@ -419,6 +425,30 @@ class MessageRetryService {
       });
       throw error;
     }
+  }
+
+  /**
+   * Get retry delay based on retry count
+   * @param {number} retryCount - Current retry count
+   * @returns {number} Delay in hours
+   */
+  getRetryDelayHours(retryCount) {
+    const delays = [12, 24, 48]; // 12h for 1st retry, 24h for 2nd, 48h for 3rd
+    return delays[retryCount] || 48; // Default to 48h if beyond defined delays
+  }
+
+  /**
+   * Check if message is eligible for retry based on progressive delays
+   * @param {Object} message - Message object
+   * @returns {boolean} Whether message is eligible for retry
+   */
+  isEligibleForRetry(message) {
+    const now = new Date();
+    const updatedAt = new Date(message.updated_at);
+    const retryDelayHours = this.getRetryDelayHours(message.retry_count);
+    const delayMs = retryDelayHours * 60 * 60 * 1000;
+
+    return now - updatedAt >= delayMs;
   }
 }
 

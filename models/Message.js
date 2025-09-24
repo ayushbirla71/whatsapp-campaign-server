@@ -325,19 +325,16 @@ class Message extends BaseModel {
   /**
    * Find failed messages eligible for retry
    * @param {number} maxRetryCount - Maximum retry count
-   * @param {number} retryAfterHours - Hours to wait before retry
+   * @param {number} retryAfterHours - Hours to wait before retry (ignored for progressive delays)
    * @param {number} limit - Maximum number of messages to return
    * @returns {Promise<Array>} Array of failed messages
    */
   async findFailedMessagesForRetry(
     maxRetryCount = 3,
-    retryAfterHours = 2,
+    retryAfterHours = 0, // Ignored for progressive delays
     limit = 100
   ) {
     try {
-      const cutoffTime = new Date();
-      // cutoffTime.setHours(cutoffTime.getHours() - retryAfterHours);
-
       const query = `
         SELECT m.*, c.id as campaign_id, c.organization_id, c.template_id,
                t.name as template_name, t.category as template_category,
@@ -351,17 +348,12 @@ class Message extends BaseModel {
         LEFT JOIN campaign_audience ca ON m.campaign_audience_id = ca.id
         WHERE m.message_status = 'failed'
         AND m.retry_count < $1
-        AND m.updated_at <= $2
         AND m.campaign_id IS NOT NULL
         ORDER BY m.updated_at ASC
-        LIMIT $3
+        LIMIT $2
       `;
 
-      const result = await this.pool.query(query, [
-        maxRetryCount,
-        cutoffTime,
-        limit,
-      ]);
+      const result = await this.pool.query(query, [maxRetryCount, limit]);
       return result.rows;
     } catch (error) {
       throw new Error(
