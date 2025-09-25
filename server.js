@@ -129,14 +129,23 @@ app.get("/api", (req, res) => {
       },
       templates: {
         "GET /api/templates/pending-approval": "Get pending approval templates",
+        "GET /api/templates/pending-admin-approval":
+          "Get pending admin approval templates",
         "GET /api/templates/organization/:id": "Get organization templates",
-        "POST /api/templates/organization/:id": "Create template",
+        "GET /api/templates/organization/:id/auto-reply":
+          "Get auto reply templates",
+        "POST /api/templates/organization/:id": "Create new template",
         "GET /api/templates/:id": "Get template by ID",
         "PUT /api/templates/:id": "Update template",
         "DELETE /api/templates/:id": "Delete template",
         "POST /api/templates/:id/submit-approval": "Submit for approval",
         "POST /api/templates/:id/approve": "Approve template",
         "POST /api/templates/:id/reject": "Reject template",
+        "POST /api/templates/:id/admin-approve":
+          "Admin approve with auto reply flag",
+        "POST /api/templates/:id/admin-reject": "Admin reject template",
+        "PUT /api/templates/:id/parameters": "Update template parameters",
+        "PUT /api/templates/:id/auto-reply-status": "Update auto reply status",
         "POST /api/templates/organization/:id/sync-whatsapp":
           "Sync from WhatsApp API",
       },
@@ -154,7 +163,8 @@ app.get("/api", (req, res) => {
         "POST /api/campaigns/:id/start": "Start campaign",
         "POST /api/campaigns/:id/pause": "Pause campaign",
         "POST /api/campaigns/:id/cancel": "Cancel campaign",
-        "GET /api/campaigns/:id/audience": "Get campaign audience",
+        "GET /api/campaigns/:id/audience?include_replies=true":
+          "Get campaign audience with reply messages",
         "POST /api/campaigns/:id/audience": "Add audience to campaign",
         "DELETE /api/campaigns/:id/audience": "Remove audience from campaign",
         "PUT /api/campaigns/audience/:id/status": "Update message status",

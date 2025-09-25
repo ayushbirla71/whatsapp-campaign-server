@@ -290,8 +290,14 @@ class Audience extends BaseModel {
   async getCampaignAudience(campaignId, filters = {}) {
     try {
       let query = `
-        SELECT * FROM campaign_audience 
-        WHERE campaign_id = $1
+        SELECT ca.*, 
+               im.content as reply_message,
+               im.timestamp as reply_timestamp,
+               im.message_type as reply_message_type
+        FROM campaign_audience ca
+        LEFT JOIN incoming_messages im ON ca.msisdn = im.from_phone_number 
+                                      AND im.context_campaign_id = ca.campaign_id
+        WHERE ca.campaign_id = $1
       `;
 
       const values = [campaignId];
@@ -300,17 +306,17 @@ class Audience extends BaseModel {
       // Apply filters
       if (filters.message_status) {
         paramCount++;
-        query += ` AND message_status = $${paramCount}`;
+        query += ` AND ca.message_status = $${paramCount}`;
         values.push(filters.message_status);
       }
 
       if (filters.search) {
         paramCount++;
-        query += ` AND (name ILIKE $${paramCount} OR msisdn ILIKE $${paramCount})`;
+        query += ` AND (ca.name ILIKE $${paramCount} OR ca.msisdn ILIKE $${paramCount})`;
         values.push(`%${filters.search}%`);
       }
 
-      query += ` ORDER BY created_at DESC`;
+      query += ` ORDER BY ca.created_at DESC`;
 
       if (filters.limit) {
         paramCount++;
@@ -331,9 +337,98 @@ class Audience extends BaseModel {
           typeof row.attributes === "string"
             ? JSON.parse(row.attributes)
             : row.attributes,
+        reply_message: row.reply_message || null,
+        reply_timestamp: row.reply_timestamp || null,
+        reply_message_type: row.reply_message_type || null,
       }));
     } catch (error) {
       throw new Error(`Error getting campaign audience: ${error.message}`);
+    }
+  }
+
+  async getCampaignAudienceWithReplies(campaignId, filters = {}) {
+    try {
+      let query = `
+        SELECT ca.*, 
+               COALESCE(
+                 JSON_AGG(
+                   JSON_BUILD_OBJECT(
+                     'message_text', CASE 
+                       WHEN im.message_type = 'button' THEN 
+                         COALESCE((im.raw_payload::json->>'button')::json->>'text', 'Button clicked')
+                       WHEN im.message_type = 'text' THEN 
+                         COALESCE(im.content, 'Text message')
+                       ELSE 
+                         COALESCE(im.content, 'Unknown message')
+                     END,
+                     'timestamp', im.timestamp,
+                     'message_type', im.message_type,
+                     'from_phone_number', im.from_phone_number,
+                     'context_campaign_id', im.context_campaign_id,
+                     'button_payload', CASE 
+                       WHEN im.message_type = 'button' THEN 
+                         (im.raw_payload::json->>'button')::json->>'payload'
+                       ELSE NULL
+                     END
+                   ) ORDER BY im.timestamp DESC
+                 ) FILTER (WHERE im.id IS NOT NULL), 
+                 '[]'::json
+               ) as replies
+        FROM campaign_audience ca
+        LEFT JOIN incoming_messages im ON (
+          ca.msisdn = CONCAT('+', im.from_phone_number)
+          OR ca.msisdn = im.from_phone_number
+          OR REPLACE(ca.msisdn, '+', '') = im.from_phone_number
+        ) AND (
+          im.context_campaign_id = ca.campaign_id 
+          OR im.context_campaign_id IS NULL
+        )
+        WHERE ca.campaign_id = $1
+      `;
+
+      const values = [campaignId];
+      let paramCount = 1;
+
+      // Apply filters
+      if (filters.message_status) {
+        paramCount++;
+        query += ` AND ca.message_status = $${paramCount}`;
+        values.push(filters.message_status);
+      }
+
+      if (filters.search) {
+        paramCount++;
+        query += ` AND (ca.name ILIKE $${paramCount} OR ca.msisdn ILIKE $${paramCount})`;
+        values.push(`%${filters.search}%`);
+      }
+
+      query += ` GROUP BY ca.id ORDER BY ca.created_at DESC`;
+
+      if (filters.limit) {
+        paramCount++;
+        query += ` LIMIT $${paramCount}`;
+        values.push(filters.limit);
+      }
+
+      if (filters.offset) {
+        paramCount++;
+        query += ` OFFSET $${paramCount}`;
+        values.push(filters.offset);
+      }
+
+      const result = await this.pool.query(query, values);
+      return result.rows.map((row) => ({
+        ...row,
+        attributes:
+          typeof row.attributes === "string"
+            ? JSON.parse(row.attributes)
+            : row.attributes,
+        replies: Array.isArray(row.replies) ? row.replies : [],
+      }));
+    } catch (error) {
+      throw new Error(
+        `Error getting campaign audience with replies: ${error.message}`
+      );
     }
   }
 

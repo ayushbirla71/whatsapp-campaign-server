@@ -191,8 +191,10 @@ CREATE TABLE templates (
     synced_at TIMESTAMP WITH TIME ZONE,
     synced_by UUID REFERENCES users(id) ON DELETE SET NULL,
 
-    -- Asset Generation Flag
+    -- Template Flags
     is_asset_generation_file BOOLEAN DEFAULT false,
+    is_auto_reply_template BOOLEAN DEFAULT false,
+    auto_reply_button_mappings JSONB DEFAULT '{}', -- Button text to template ID mappings for interactive templates
 
     -- Constraints
     CONSTRAINT templates_name_org_unique UNIQUE (name, organization_id, language),

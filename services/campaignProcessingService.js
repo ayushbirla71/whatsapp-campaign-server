@@ -136,18 +136,24 @@ class CampaignProcessingService {
       // Update campaign status to ready_to_launch
       await Campaign.update(campaign.id, {
         status: "ready_to_launch",
-        // ready_to_launch_at: new Date(),
       });
 
-      // Get campaign audience
-      const audienceList = await this.getCampaignAudience(campaign.id);
+      // Get campaign audience specifically for processing
+      const audienceList = await this.getCampaignAudienceForProcessing(
+        campaign.id
+      );
 
       if (audienceList.length === 0) {
-        logger.warn("No audience found for campaign", {
+        logger.warn("No pending audience found for campaign processing", {
           campaignId: campaign.id,
         });
         return;
       }
+
+      logger.info("Found audience members for processing", {
+        campaignId: campaign.id,
+        pendingAudienceCount: audienceList.length,
+      });
 
       // Prepare template data
       const template = {
@@ -176,11 +182,9 @@ class CampaignProcessingService {
         error: error.message,
       });
 
-      // Update campaign status to failed or back to asset_generated for retry
+      // Update campaign status back to asset_generated for retry
       await Campaign.update(campaign.id, {
-        status: "asset_generated", // Allow retry
-        processing_error: error.message,
-        processing_failed_at: new Date(),
+        status: "asset_generated",
       });
 
       throw error;
@@ -188,19 +192,19 @@ class CampaignProcessingService {
   }
 
   /**
-   * Get campaign audience for a specific campaign
+   * Get campaign audience specifically for processing (no replies, optimized for message generation)
    * @param {string} campaignId - Campaign ID
-   * @returns {Array} Array of audience data
+   * @returns {Array} Array of audience data for processing
    */
-  async getCampaignAudience(campaignId) {
+  async getCampaignAudienceForProcessing(campaignId) {
     try {
       const query = `
-        SELECT id, campaign_id, organization_id, name, msisdn, attributes,
-               message_status, created_at, generated_asset_urls
-        FROM campaign_audience
-        WHERE campaign_id = $1
-       
-        ORDER BY created_at ASC
+        SELECT ca.id, ca.campaign_id, ca.organization_id, ca.name, ca.msisdn, 
+               ca.attributes, ca.message_status, ca.created_at, ca.generated_asset_urls
+        FROM campaign_audience ca
+        WHERE ca.campaign_id = $1
+        AND ca.message_status = 'pending'
+        ORDER BY ca.created_at ASC
       `;
 
       const result = await Audience.pool.query(query, [campaignId]);
@@ -209,6 +213,47 @@ class CampaignProcessingService {
       return result.rows.map((row) => ({
         ...row,
         attributes: this.parseAttributes(row.attributes),
+        generated_asset_urls: this.parseAttributes(row.generated_asset_urls),
+      }));
+    } catch (error) {
+      logger.error("Error fetching campaign audience for processing", {
+        campaignId,
+        error: error.message,
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * Get campaign audience for external APIs (includes replies and full data)
+   * @param {string} campaignId - Campaign ID
+   * @returns {Array} Array of audience data with replies
+   */
+  async getCampaignAudience(campaignId) {
+    try {
+      const query = `
+        SELECT ca.id, ca.campaign_id, ca.organization_id, ca.name, ca.msisdn, ca.attributes,
+               ca.message_status, ca.created_at, ca.generated_asset_urls,
+               im.content as reply_message,
+               im.timestamp as reply_timestamp,
+               im.message_type as reply_message_type
+        FROM campaign_audience ca
+        LEFT JOIN incoming_messages im ON ca.msisdn = im.from_phone_number 
+                                      AND im.context_campaign_id = ca.campaign_id
+        WHERE ca.campaign_id = $1
+        ORDER BY ca.created_at ASC
+      `;
+
+      const result = await Audience.pool.query(query, [campaignId]);
+
+      // Parse attributes JSON for each audience member
+      return result.rows.map((row) => ({
+        ...row,
+        attributes: this.parseAttributes(row.attributes),
+        generated_asset_urls: this.parseAttributes(row.generated_asset_urls),
+        reply_message: row.reply_message || null,
+        reply_timestamp: row.reply_timestamp || null,
+        reply_message_type: row.reply_message_type || null,
       }));
     } catch (error) {
       logger.error("Error fetching campaign audience", {

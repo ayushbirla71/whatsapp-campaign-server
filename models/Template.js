@@ -180,7 +180,13 @@ class Template extends BaseModel {
   }
 
   // Admin approval methods for campaign usage
-  async adminApproveTemplate(id, approvedBy, parameters = {}) {
+  async adminApproveTemplate(
+    id,
+    approvedBy,
+    parameters = {},
+    isAutoReplyTemplate = false,
+    buttonMappings = {}
+  ) {
     try {
       const updateData = {
         approved_by_admin: "approved",
@@ -189,6 +195,8 @@ class Template extends BaseModel {
         admin_rejected_at: null,
         admin_rejection_reason: null,
         parameters: JSON.stringify(parameters),
+        is_auto_reply_template: isAutoReplyTemplate,
+        auto_reply_button_mappings: JSON.stringify(buttonMappings),
       };
 
       return await this.update(id, updateData);
@@ -235,11 +243,16 @@ class Template extends BaseModel {
     }
   }
 
-  async updateTemplateParameters(id, parameters) {
+  async updateTemplateParameters(id, parameters, isAutoReplyTemplate = null) {
     try {
       const updateData = {
         parameters: JSON.stringify(parameters),
       };
+
+      // Only update is_auto_reply_template if explicitly provided
+      if (isAutoReplyTemplate !== null) {
+        updateData.is_auto_reply_template = isAutoReplyTemplate;
+      }
 
       return await this.update(id, updateData);
     } catch (error) {
@@ -449,6 +462,107 @@ class Template extends BaseModel {
     }
 
     return errors;
+  }
+
+  // Get auto reply templates for organization
+  async findAutoReplyTemplates(organizationId) {
+    try {
+      const query = `
+        SELECT * FROM templates 
+        WHERE organization_id = $1 
+        AND approved_by_admin = 'approved'
+        AND is_auto_reply_template = true
+        ORDER BY created_at DESC
+      `;
+
+      const result = await this.pool.query(query, [organizationId]);
+      return result.rows.map((template) => this.parseTemplate(template));
+    } catch (error) {
+      throw new Error(`Error finding auto reply templates: ${error.message}`);
+    }
+  }
+
+  // Update auto reply template status
+  async updateAutoReplyStatus(id, isAutoReplyTemplate) {
+    try {
+      const updateData = {
+        is_auto_reply_template: isAutoReplyTemplate,
+      };
+
+      return await this.update(id, updateData);
+    } catch (error) {
+      throw new Error(`Error updating auto reply status: ${error.message}`);
+    }
+  }
+
+  // Helper method to detect interactive components and extract button text
+  detectInteractiveButtons(components) {
+    const buttons = [];
+
+    if (!components || !Array.isArray(components)) return buttons;
+
+    components.forEach((component) => {
+      if (component.type === "BUTTONS" && component.buttons) {
+        component.buttons.forEach((button) => {
+          if (button.type === "QUICK_REPLY" && button.text) {
+            buttons.push({
+              text: button.text.trim(),
+              type: "QUICK_REPLY",
+            });
+          }
+        });
+      }
+    });
+
+    return buttons;
+  }
+
+  // Check if template has interactive buttons that need auto-reply setup
+  hasInteractiveButtons(components) {
+    const buttons = this.detectInteractiveButtons(components);
+    return buttons.length > 0;
+  }
+
+  // Get auto reply templates that can be used for button responses
+  async findAutoReplyTemplatesForButtons(organizationId) {
+    try {
+      const query = `
+        SELECT id, name, body_text, components 
+        FROM templates 
+        WHERE organization_id = $1 
+        AND approved_by_admin = 'approved'
+        AND is_auto_reply_template = true
+        ORDER BY name ASC
+      `;
+
+      const result = await this.pool.query(query, [organizationId]);
+      return result.rows.map((template) => ({
+        id: template.id,
+        name: template.name,
+        body_text: template.body_text,
+        components:
+          typeof template.components === "string"
+            ? JSON.parse(template.components)
+            : template.components,
+      }));
+    } catch (error) {
+      throw new Error(
+        `Error finding auto reply templates for buttons: ${error.message}`
+      );
+    }
+  }
+
+  // Update button mappings for a template
+  async updateButtonMappings(id, buttonMappings) {
+    try {
+      const updateData = {
+        auto_reply_button_mappings: JSON.stringify(buttonMappings),
+      };
+
+      return await this.update(id, updateData);
+    } catch (error) {
+      throw new Error(`Error updating button mappings: ${error.message}`);
+    }
   }
 }
 

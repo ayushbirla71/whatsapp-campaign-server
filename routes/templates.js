@@ -159,4 +159,33 @@ router.get(
   templateController.getAllTemplates
 );
 
+// Get auto reply templates for organization
+router.get(
+  "/organization/:organizationId/auto-reply",
+  authorize(
+    "super_admin",
+    "system_admin",
+    "organization_admin",
+    "organization_user"
+  ),
+  validateUUID("organizationId"),
+  templateController.getAutoReplyTemplates
+);
+
+// Update auto reply template status (super admin and system admin only)
+router.put(
+  "/:templateId/auto-reply-status",
+  authorize("super_admin", "system_admin"),
+  validateUUID("templateId"),
+  templateController.updateAutoReplyStatus
+);
+
+// Get template details for admin approval (including button analysis)
+router.get(
+  "/:templateId/admin-approval-details",
+  authorize("super_admin", "system_admin"),
+  validateUUID("templateId"),
+  templateController.getTemplateForAdminApproval
+);
+
 module.exports = router;

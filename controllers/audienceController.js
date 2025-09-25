@@ -168,7 +168,13 @@ const bulkCreateMasterAudience = asyncHandler(async (req, res) => {
 // Get campaign audience
 const getCampaignAudience = asyncHandler(async (req, res) => {
   const { campaignId } = req.params;
-  const { page = 1, limit = 10, message_status, search } = req.query;
+  const {
+    page = 1,
+    limit = 10,
+    message_status,
+    search,
+    include_replies = false,
+  } = req.query;
   const offset = (page - 1) * limit;
 
   // Check if campaign exists and user has access
@@ -200,7 +206,12 @@ const getCampaignAudience = asyncHandler(async (req, res) => {
   if (message_status) filters.message_status = message_status;
   if (search) filters.search = search;
 
-  const audience = await Audience.getCampaignAudience(campaignId, filters);
+  // Use different method based on include_replies parameter
+  const audience =
+    include_replies === "true"
+      ? await Audience.getCampaignAudienceWithReplies(campaignId, filters)
+      : await Audience.getCampaignAudience(campaignId, filters);
+
   const total = await Audience.countFromTable(
     { campaign_id: campaignId },
     "campaign_audience"

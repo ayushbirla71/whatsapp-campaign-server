@@ -2,7 +2,7 @@
   "info": {
     "_postman_id": "complete-whatsapp-server-api",
     "name": "Complete WhatsApp Server API",
-    "description": "Complete API collection for WhatsApp Business Server with authentication, users, organizations, templates management, admin approval workflow, and audience parameter validation",
+    "description": "Complete API collection for WhatsApp Business Server with authentication, users, organizations, templates management, admin approval workflow, and audience parameter validation.\n\n## Features\n- **Authentication**: JWT-based auth with role management\n- **User Management**: Complete CRUD with role-based access\n- **Organization Management**: Multi-tenant organization support\n- **Template Management**: WhatsApp template creation and approval workflow\n- **Admin Approval**: Two-stage template approval with parameter mapping\n- **Audience Validation**: Parameter validation for campaign audiences\n- **Auto-Reply Templates**: Interactive templates with button mappings\n- **Campaign Management**: Campaign creation and message sending\n- **Asset Generation**: Dynamic asset file generation for templates\n- **Webhook Handling**: WhatsApp webhook processing\n- **Message Retry**: Automatic retry for failed messages\n\n## New Endpoints Added\n\n### Template Admin Approval\n- `GET /api/templates/pending-admin-approval` - Get templates pending admin approval\n- `POST /api/templates/:id/admin-approve` - Admin approve template with parameters\n- `POST /api/templates/:id/admin-reject` - Admin reject template for campaign usage\n- `PUT /api/templates/:id/parameters` - Update template parameter mappings\n- `GET /api/templates/:id/admin-approval-details` - Get template admin approval details\n- `GET /api/templates/organization/:id/auto-reply` - Get auto-reply templates\n- `PUT /api/templates/:id/auto-reply-status` - Update auto-reply status\n\n### Enhanced Campaign Management\n- `POST /api/campaigns/:id/audience` - Add audience with parameter validation\n- `POST /api/campaigns/retry-failed-messages` - Retry failed messages\n\n### Asset File Management\n- `GET /api/asset-files/template/:id` - Get template asset files\n- `POST /api/asset-files/template/:id` - Create asset file for template\n- `PUT /api/asset-files/:id` - Update asset file\n- `DELETE /api/asset-files/:id` - Delete asset file\n- `POST /api/asset-files/template/:id/version` - Create new version\n- `GET /api/asset-files/template/:id/versions/:filename` - Get file versions\n\n## Workflow\n1. **Authentication** → Login and get access token\n2. **Template Creation** → Create and submit for approval\n3. **Standard Approval** → Admin approves for WhatsApp API\n4. **Admin Approval** → Configure parameters and button mappings\n5. **Campaign Creation** → Create campaign with approved template\n6. **Audience Management** → Add audience with parameter validation\n7. **Message Sending** → Send personalized messages\n\n## Environment Variables\n- `baseUrl`: Server base URL\n- `accessToken`: JWT authentication token\n- `refreshToken`: JWT refresh token\n- `userId`: Current user ID\n- `organizationId`: Current organization ID\n- `templateId`: Template ID for operations\n- `campaignId`: Campaign ID for operations\n- `pendingAdminTemplateId`: Auto-populated template ID\n- `assetFileId`: Asset file ID for operations",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "item": [
@@ -965,13 +965,10 @@
                 "exec": [
                   "if (pm.response.code === 200) {",
                   "    const response = pm.response.json();",
-                  "    console.log('Pending Admin Approval Templates:', response.data.templates.length);",
-                  "    ",
-                  "    // Save first pending template ID for admin approval",
                   "    if (response.data.templates && response.data.templates.length > 0) {",
                   "        const firstTemplate = response.data.templates[0];",
                   "        pm.environment.set('pendingAdminTemplateId', firstTemplate.id);",
-                  "        console.log('Saved pending admin template ID:', firstTemplate.id);",
+                  "        console.log('Auto-saved pendingAdminTemplateId:', firstTemplate.id);",
                   "    }",
                   "}"
                 ]
@@ -990,7 +987,8 @@
               "raw": "{{baseUrl}}/api/templates/pending-admin-approval",
               "host": ["{{baseUrl}}"],
               "path": ["api", "templates", "pending-admin-approval"]
-            }
+            },
+            "description": "Retrieve templates that have been approved by WhatsApp API but need admin approval for campaign usage. These templates require parameter mapping and button configuration before they can be used in campaigns."
           }
         },
         {
@@ -1003,7 +1001,16 @@
                   "if (pm.response.code === 200) {",
                   "    const response = pm.response.json();",
                   "    console.log('Template admin approved successfully');",
-                  "    console.log('Template parameters:', response.data.template.parameters);",
+                  "    console.log('Template ID:', response.data.template.id);",
+                  "    console.log('Parameters configured:', response.data.template.parameters);",
+                  "    console.log('Is auto-reply template:', response.data.template.is_auto_reply_template);",
+                  "    console.log('Has interactive buttons:', response.data.has_interactive_buttons);",
+                  "    if (response.data.template.auto_reply_button_mappings) {",
+                  "        console.log('Button mappings:', response.data.template.auto_reply_button_mappings);",
+                  "    }",
+                  "    if (response.data.detected_buttons) {",
+                  "        console.log('Detected buttons:', response.data.detected_buttons);",
+                  "    }",
                   "}"
                 ]
               }
@@ -1023,7 +1030,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n    \"parameters\": {\n        \"1\": \"customer_name\",\n        \"2\": \"order_number\",\n        \"3\": \"pickup_location\"\n    }\n}"
+              "raw": "{\n    \"parameters\": {\n        \"1\": \"customer_name\",\n        \"2\": \"order_number\",\n        \"3\": \"pickup_location\"\n    },\n    \"is_auto_reply_template\": true,\n    \"button_mappings\": {\n        \"Yes, send updates\": \"550e8400-e29b-41d4-a716-446655440001\",\n        \"No, thanks\": \"550e8400-e29b-41d4-a716-446655440002\",\n        \"Call Support\": \"550e8400-e29b-41d4-a716-446655440003\"\n    }\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/api/templates/{{pendingAdminTemplateId}}/admin-approve",
@@ -1034,7 +1041,8 @@
                 "{{pendingAdminTemplateId}}",
                 "admin-approve"
               ]
-            }
+            },
+            "description": "Admin approve a template for campaign usage with complete configuration:\n\n**Request Body:**\n- `parameters` (object): Maps WhatsApp template placeholders (1, 2, 3...) to audience attribute names\n- `is_auto_reply_template` (boolean): Whether this template should be used for auto-replies\n- `button_mappings` (object): Maps button text to template IDs for interactive responses\n\n**Response includes:**\n- Updated template with admin approval status\n- `has_interactive_buttons`: Boolean indicating if template has buttons\n- `detected_buttons`: Array of button objects found in template\n- Configured parameter mappings and button mappings"
           }
         },
         {
@@ -1077,6 +1085,7 @@
                   "if (pm.response.code === 200) {",
                   "    const response = pm.response.json();",
                   "    console.log('Template parameters updated successfully');",
+                  "    console.log('Template ID:', response.data.template.id);",
                   "    console.log('Updated parameters:', response.data.template.parameters);",
                   "}"
                 ]
@@ -1097,13 +1106,14 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n    \"parameters\": {\n        \"1\": \"customer_name\",\n        \"2\": \"order_number\",\n        \"3\": \"pickup_location\",\n        \"4\": \"delivery_date\"\n    }\n}"
+              "raw": "{\n    \"parameters\": {\n        \"1\": \"customer_name\",\n        \"2\": \"order_number\",\n        \"3\": \"pickup_location\",\n        \"4\": \"delivery_date\",\n        \"5\": \"total_amount\"\n    }\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/api/templates/{{templateId}}/parameters",
               "host": ["{{baseUrl}}"],
               "path": ["api", "templates", "{{templateId}}", "parameters"]
-            }
+            },
+            "description": "Update parameter mappings for an already approved template. Only super_admin and system_admin can update parameters.\n\n**Request Body:**\n- `parameters` (object, required): Maps WhatsApp template placeholders to audience attribute names\n\n**Requirements:**\n- Template must have status 'approved'\n- User must be super_admin or system_admin\n- Parameters must be a valid object"
           }
         },
         {
@@ -1121,6 +1131,154 @@
               "host": ["{{baseUrl}}"],
               "path": ["api", "templates", "{{templateId}}"]
             }
+          }
+        },
+        {
+          "name": "Update Auto Reply Status",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    console.log('Auto-reply status updated successfully');",
+                  "    console.log('Template ID:', response.data.template.id);",
+                  "    console.log('Is auto-reply template:', response.data.template.is_auto_reply_template);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"is_auto_reply_template\": true\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/templates/{{templateId}}/auto-reply-status",
+              "host": ["{{baseUrl}}"],
+              "path": [
+                "api",
+                "templates",
+                "{{templateId}}",
+                "auto-reply-status"
+              ]
+            },
+            "description": "Update the auto-reply status of a template. Only super_admin and system_admin can update this status.\n\n**Request Body:**\n- `is_auto_reply_template` (boolean, required): Whether template should be used for auto-replies\n\n**Requirements:**\n- User must be super_admin or system_admin\n- Template must exist"
+          }
+        },
+        {
+          "name": "Admin Approve Template (Validation Error Example)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 400) {",
+                  "    const response = pm.response.json();",
+                  "    console.log('Expected validation error:', response.message);",
+                  "    console.log('This demonstrates proper validation working');",
+                  "} else {",
+                  "    console.log('Unexpected response - validation should have failed');",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"parameters\": {\n        \"1\": \"customer_name\",\n        \"2\": \"order_number\",\n        \"3\": \"pickup_location\"\n    },\n    \"is_auto_reply_template\": false,\n    \"button_mappings\": {\n        \"Yes, send updates\": \"550e8400-e29b-41d4-a716-446655440001\",\n        \"No, thanks\": \"550e8400-e29b-41d4-a716-446655440002\"\n    }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/templates/{{pendingAdminTemplateId}}/admin-approve",
+              "host": ["{{baseUrl}}"],
+              "path": [
+                "api",
+                "templates",
+                "{{pendingAdminTemplateId}}",
+                "admin-approve"
+              ]
+            },
+            "description": "This request will FAIL validation to demonstrate error handling:\n\n**Validation Errors:**\n1. **Missing Parameters**: Only provides 3 parameters but template needs 9 ({{1}} through {{9}})\n2. **Wrong Button Names**: Uses \"Yes, send updates\", \"No, thanks\" but template has \"YES\", \"NO\"\n\n**Expected Error Response:**\n- Missing parameter mappings for {{4}}, {{5}}, {{6}}, {{7}}, {{8}}, {{9}}\n- Button mapping validation failed for incorrect button names"
+          }
+        },
+        {
+          "name": "Admin Approve Template (Complete Parameters)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    console.log('Template admin approved successfully');",
+                  "    console.log('Template ID:', response.data.template.id);",
+                  "    console.log('Required parameters:', response.data.required_parameters);",
+                  "    console.log('Configured parameters:', response.data.template.parameters);",
+                  "    console.log('Detected buttons:', response.data.detected_buttons);",
+                  "    console.log('Button mappings:', response.data.template.auto_reply_button_mappings);",
+                  "} else if (pm.response.code === 400) {",
+                  "    const response = pm.response.json();",
+                  "    console.log('Validation failed:', response.message);",
+                  "    if (response.data && response.data.detected_buttons) {",
+                  "        console.log('Detected buttons:', response.data.detected_buttons);",
+                  "    }",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"parameters\": {\n        \"1\": \"customer_name\",\n        \"2\": \"clinic_name\",\n        \"3\": \"service_type\",\n        \"4\": \"consultation_type\",\n        \"5\": \"location\",\n        \"6\": \"date\",\n        \"7\": \"time\",\n        \"8\": \"doctor_name\",\n        \"9\": \"contact_number\"\n    },\n    \"is_auto_reply_template\": false,\n    \"button_mappings\": {\n        \"YES\": \"550e8400-e29b-41d4-a716-446655440001\",\n        \"NO\": \"550e8400-e29b-41d4-a716-446655440002\"\n    }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/templates/{{pendingAdminTemplateId}}/admin-approve",
+              "host": ["{{baseUrl}}"],
+              "path": [
+                "api",
+                "templates",
+                "{{pendingAdminTemplateId}}",
+                "admin-approve"
+              ]
+            },
+            "description": "Admin approve template with complete validation:\n\n**Validation Rules:**\n1. **Parameters**: Must provide ALL template parameters ({{1}} through {{9}} for this template)\n2. **Button Mappings**: Must match EXACT button text from template (\"YES\", \"NO\")\n3. **Template ID**: Must exist and be in 'approved' status\n\n**This example provides:**\n- All 9 required parameters for the medical consultation template\n- Correct button mappings matching detected buttons \"YES\" and \"NO\"\n- Valid auto-reply template IDs for button responses"
           }
         }
       ]
@@ -1259,13 +1417,15 @@
                 "exec": [
                   "if (pm.response.code === 201) {",
                   "    const response = pm.response.json();",
-                  "    console.log('Audience added successfully');",
-                  "    console.log('Total processed:', response.data.total_processed);",
-                  "    console.log('Successful:', response.data.successful);",
-                  "    console.log('Failed:', response.data.failed);",
+                  "    console.log('Audience added successfully with valid parameters');",
+                  "    console.log('Added contacts:', response.data.added_count);",
+                  "    console.log('Validation passed for all parameters');",
                   "} else if (pm.response.code === 400) {",
                   "    const response = pm.response.json();",
                   "    console.log('Validation failed:', response.message);",
+                  "    if (response.data && response.data.validation_errors) {",
+                  "        console.log('Validation errors:', response.data.validation_errors);",
+                  "    }",
                   "}"
                 ]
               }
@@ -1285,13 +1445,14 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n    \"audience_list\": [\n        {\n            \"name\": \"John Doe\",\n            \"msisdn\": \"+1234567890\",\n            \"attributes\": {\n                \"customer_name\": \"John Doe\",\n                \"order_number\": \"ORD-12345\",\n                \"pickup_location\": \"Downtown Store\",\n                \"email\": \"john@example.com\"\n            }\n        },\n        {\n            \"name\": \"Jane Smith\",\n            \"msisdn\": \"+1234567891\",\n            \"attributes\": {\n                \"customer_name\": \"Jane Smith\",\n                \"order_number\": \"ORD-12346\",\n                \"pickup_location\": \"Mall Store\",\n                \"phone\": \"+1234567891\"\n            }\n        }\n    ]\n}"
+              "raw": "{\n    \"audience\": [\n        {\n            \"name\": \"John Smith\",\n            \"msisdn\": \"+1234567890\",\n            \"parameters\": {\n                \"customer_name\": \"John Smith\",\n                \"order_number\": \"ORD-12345\",\n                \"pickup_location\": \"Downtown Store\"\n            }\n        },\n        {\n            \"name\": \"Sarah Johnson\",\n            \"msisdn\": \"+1234567891\",\n            \"parameters\": {\n                \"customer_name\": \"Sarah Johnson\",\n                \"order_number\": \"ORD-12346\",\n                \"pickup_location\": \"Mall Location\"\n            }\n        }\n    ]\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/api/campaigns/{{campaignId}}/audience",
               "host": ["{{baseUrl}}"],
               "path": ["api", "campaigns", "{{campaignId}}", "audience"]
-            }
+            },
+            "description": "Add audience to campaign with valid parameter mappings. This endpoint validates that all required template parameters are provided for each contact and that the parameter values match the template's configured parameter mappings."
           }
         },
         {
@@ -1841,6 +2002,32 @@
             ],
             "body": {
               "mode": "raw",
+              "raw": "{\n    \"file_name\": \"personalized_image_generator.py\",\n    \"description\": \"Generates personalized welcome images with customer name and offer details\",\n    \"version\": \"1.0\",\n    \"file_content\": \"# Personalized Image Generator\\nimport os\\nfrom PIL import Image, ImageDraw, ImageFont\\nimport json\\n\\ndef generate_asset(attributes, name, msisdn, temp_dir):\\n    \\\"\\\"\\\"Generate personalized image asset\\\"\\\"\\\"\\n    try:\\n        # Create personalized image\\n        width, height = 800, 400\\n        image = Image.new('RGB', (width, height), color='#f0f8ff')\\n        draw = ImageDraw.Draw(image)\\n        \\n        # Add personalized text\\n        greeting = attributes.get('greeting', 'Hello')\\n        offer = attributes.get('offer', '20% off')\\n        text = f'{greeting} {name}! Get {offer} on your next purchase!'\\n        \\n        try:\\n            font = ImageFont.truetype('arial.ttf', 32)\\n        except:\\n            font = ImageFont.load_default()\\n        \\n        # Center the text\\n        bbox = draw.textbbox((0, 0), text, font=font)\\n        text_width = bbox[2] - bbox[0]\\n        x = (width - text_width) // 2\\n        y = height // 2 - 20\\n        \\n        draw.text((x, y), text, fill='#333333', font=font)\\n        \\n        # Add account info if available\\n        if 'account_no' in attributes:\\n            account_text = f'Account: {attributes[\\\"account_no\\\"]}'\\n            draw.text((50, height - 50), account_text, fill='#666666', font=font)\\n        \\n        # Save image\\n        safe_name = name.replace(' ', '_').replace('/', '_')\\n        image_path = os.path.join(temp_dir, f'welcome_{safe_name}.png')\\n        image.save(image_path)\\n        \\n        return {'image': image_path}\\n    except Exception as e:\\n        print(f'Error generating asset: {e}')\\n        return None\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/asset-files/template/{{templateId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "asset-files", "template", "{{templateId}}"]
+            }
+          }
+        },
+        {
+          "name": "Update Asset File",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+
               "raw": "{\n    \"file_name\": \"personalized_image_generator.py\",\n    \"description\": \"Version 2.0: Added video generation capability and enhanced personalization\",\n    \"file_content\": \"# Advanced Personalized Asset Generator v2.0\\nimport os\\nfrom PIL import Image, ImageDraw, ImageFont\\nimport json\\n\\ndef generate_asset(attributes, name, msisdn, temp_dir):\\n    \\\"\\\"\\\"Generate multiple personalized assets (image + video thumbnail)\\\"\\\"\\\"\\n    try:\\n        assets = {}\\n        \\n        # Generate personalized image\\n        width, height = 800, 400\\n        image = Image.new('RGB', (width, height), color='#2c3e50')\\n        draw = ImageDraw.Draw(image)\\n        \\n        # Create modern design\\n        # Add header bar\\n        draw.rectangle([(0, 0), (width, 80)], fill='#3498db')\\n        \\n        # Add personalized content\\n        greeting = attributes.get('greeting', 'Welcome')\\n        offer = attributes.get('offer', 'Special Offer')\\n        subscription = attributes.get('subscription', 'standard')\\n        \\n        try:\\n            header_font = ImageFont.truetype('arial.ttf', 24)\\n            title_font = ImageFont.truetype('arial.ttf', 36)\\n            body_font = ImageFont.truetype('arial.ttf', 20)\\n        except:\\n            header_font = ImageFont.load_default()\\n            title_font = ImageFont.load_default()\\n            body_font = ImageFont.load_default()\\n        \\n        # Header text\\n        draw.text((20, 25), f'{greeting}, {name}!', fill='white', font=header_font)\\n        \\n        # Main content\\n        main_text = f'Your {subscription.title()} Benefits'\\n        draw.text((50, 120), main_text, fill='white', font=title_font)\\n        \\n        # Offer details\\n        offer_text = f'🎉 {offer}'\\n        draw.text((50, 180), offer_text, fill='#f39c12', font=body_font)\\n        \\n        # Additional info based on attributes\\n        y_pos = 220\\n        if 'city' in attributes:\\n            city_text = f'📍 Available in {attributes[\\\"city\\\"]}'\\n            draw.text((50, y_pos), city_text, fill='#ecf0f1', font=body_font)\\n            y_pos += 30\\n        \\n        if 'age' in attributes:\\n            age_group = 'Young Professional' if int(attributes.get('age', 25)) < 30 else 'Experienced Professional'\\n            age_text = f'👤 {age_group} Package'\\n            draw.text((50, y_pos), age_text, fill='#ecf0f1', font=body_font)\\n            y_pos += 30\\n        \\n        # Footer\\n        if 'account_no' in attributes:\\n            account_text = f'Account: {attributes[\\\"account_no\\\"]}'\\n            draw.text((20, height - 40), account_text, fill='#95a5a6', font=body_font)\\n        \\n        # Save main image\\n        safe_name = name.replace(' ', '_').replace('/', '_')\\n        image_path = os.path.join(temp_dir, f'personalized_v2_{safe_name}.png')\\n        image.save(image_path)\\n        assets['image'] = image_path\\n        \\n        # Generate thumbnail for video (placeholder)\\n        thumb_image = image.resize((400, 200))\\n        thumb_draw = ImageDraw.Draw(thumb_image)\\n        # Add play button overlay\\n        play_button_size = 40\\n        play_x = (400 - play_button_size) // 2\\n        play_y = (200 - play_button_size) // 2\\n        thumb_draw.ellipse([play_x, play_y, play_x + play_button_size, play_y + play_button_size], fill='rgba(255,255,255,0.8)')\\n        thumb_draw.polygon([play_x + 15, play_y + 10, play_x + 15, play_y + 30, play_x + 30, play_y + 20], fill='#3498db')\\n        \\n        thumb_path = os.path.join(temp_dir, f'video_thumb_{safe_name}.png')\\n        thumb_image.save(thumb_path)\\n        assets['video_thumbnail'] = thumb_path\\n        \\n        return assets\\n    except Exception as e:\\n        print(f'Error generating v2 assets: {e}')\\n        return None\"\n}"
             },
             "url": {

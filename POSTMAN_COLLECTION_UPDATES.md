@@ -9,6 +9,7 @@ The **Complete-WhatsApp-Server-API.postman_collection.json** has been updated to
 ### Template Admin Approval Section
 
 #### 1. Get Pending Admin Approval Templates
+
 - **Method**: `GET`
 - **URL**: `{{baseUrl}}/api/templates/pending-admin-approval`
 - **Headers**: Authorization Bearer token
@@ -16,6 +17,7 @@ The **Complete-WhatsApp-Server-API.postman_collection.json** has been updated to
 - **Purpose**: Retrieve templates that need admin approval for campaign usage
 
 #### 2. Admin Approve Template
+
 - **Method**: `POST`
 - **URL**: `{{baseUrl}}/api/templates/{{pendingAdminTemplateId}}/admin-approve`
 - **Headers**: Authorization + Content-Type
@@ -24,6 +26,7 @@ The **Complete-WhatsApp-Server-API.postman_collection.json** has been updated to
 - **Purpose**: Approve template with parameter mapping
 
 #### 3. Admin Reject Template
+
 - **Method**: `POST`
 - **URL**: `{{baseUrl}}/api/templates/{{pendingAdminTemplateId}}/admin-reject`
 - **Headers**: Authorization + Content-Type
@@ -31,6 +34,7 @@ The **Complete-WhatsApp-Server-API.postman_collection.json** has been updated to
 - **Purpose**: Reject template for campaign usage
 
 #### 4. Update Template Parameters
+
 - **Method**: `PUT`
 - **URL**: `{{baseUrl}}/api/templates/{{templateId}}/parameters`
 - **Headers**: Authorization + Content-Type
@@ -41,6 +45,7 @@ The **Complete-WhatsApp-Server-API.postman_collection.json** has been updated to
 ### Enhanced Audience Management
 
 #### 1. Add Audience to Campaign (Valid Parameters)
+
 - **Method**: `POST`
 - **URL**: `{{baseUrl}}/api/campaigns/{{campaignId}}/audience`
 - **Body**: Audience list with valid template parameters
@@ -48,66 +53,120 @@ The **Complete-WhatsApp-Server-API.postman_collection.json** has been updated to
 - **Purpose**: Test successful audience addition with proper parameters
 
 #### 2. Add Audience to Campaign (Invalid Parameters)
+
 - **Method**: `POST`
 - **URL**: `{{baseUrl}}/api/campaigns/{{campaignId}}/audience`
 - **Body**: Audience list with missing/invalid parameters
 - **Test Script**: Validates expected validation errors
 - **Purpose**: Test parameter validation error handling
 
+## 🆕 Auto-Reply Template Features
+
+### Interactive Template Button Mapping
+
+- **Get Template Admin Approval Details**: Analyze template for interactive buttons
+- **Create Interactive Template**: Template with quick reply buttons
+- **Create Auto-Reply Templates**: Response templates for button actions
+- **Mark Templates as Auto-Reply**: Set auto-reply flag for response templates
+- **Admin Approve with Button Mappings**: Configure button-to-template mappings
+
+### New Environment Variables
+
+- `interactiveTemplateId`: Interactive template with buttons
+- `yesResponseTemplateId`: Auto-reply template for positive responses
+- `noResponseTemplateId`: Auto-reply template for negative responses
+
+### Complete Interactive Template Workflow
+
+1. **Create Auto-Reply Response Templates** → Create templates for button responses
+2. **Mark Templates as Auto-Reply** → Set auto-reply flag
+3. **Create Interactive Template** → Template with quick reply buttons
+4. **Submit for Standard Approval** → Get WhatsApp approval
+5. **Get Admin Approval Details** → Analyze interactive buttons
+6. **Admin Approve with Button Mappings** → Configure auto-reply mappings
+7. **Test Missing Button Mappings** → Validate error handling
+
+### Button Mapping Configuration
+
+```json
+{
+  "parameters": {
+    "1": "customer_name"
+  },
+  "is_auto_reply_template": false,
+  "button_mappings": {
+    "Yes, send updates": "template-id-for-yes",
+    "No, thanks": "template-id-for-no"
+  }
+}
+```
+
+### API Endpoints Added
+
+- `GET /api/templates/:id/admin-approval-details` - Analyze template buttons
+- `GET /api/templates/organization/:id/auto-reply` - Get auto-reply templates
+- `PUT /api/templates/:id/auto-reply-status` - Update auto-reply flag
+- Enhanced `POST /api/templates/:id/admin-approve` - Support button mappings
+
 ## 📝 Request Body Examples
 
 ### Admin Approve Template
+
 ```json
 {
-    "parameters": {
-        "1": "customer_name",
-        "2": "order_number",
-        "3": "pickup_location"
-    }
+  "parameters": {
+    "1": "customer_name",
+    "2": "order_number",
+    "3": "pickup_location"
+  }
 }
 ```
 
 ### Valid Audience Data
+
 ```json
 {
-    "audience_list": [
-        {
-            "name": "John Doe",
-            "msisdn": "+1234567890",
-            "attributes": {
-                "customer_name": "John Doe",
-                "order_number": "ORD-12345",
-                "pickup_location": "Downtown Store",
-                "email": "john@example.com"
-            }
-        }
-    ]
+  "audience_list": [
+    {
+      "name": "John Doe",
+      "msisdn": "+1234567890",
+      "attributes": {
+        "customer_name": "John Doe",
+        "order_number": "ORD-12345",
+        "pickup_location": "Downtown Store",
+        "email": "john@example.com"
+      }
+    }
+  ]
 }
 ```
 
 ### Invalid Audience Data (for testing)
+
 ```json
 {
-    "audience_list": [
-        {
-            "name": "Bob Wilson",
-            "msisdn": "+1234567892",
-            "attributes": {
-                "customer_name": "Bob Wilson",
-                "email": "bob@example.com"
-                // Missing: order_number, pickup_location
-            }
-        }
-    ]
+  "audience_list": [
+    {
+      "name": "Bob Wilson",
+      "msisdn": "+1234567892",
+      "attributes": {
+        "customer_name": "Bob Wilson",
+        "email": "bob@example.com"
+        // Missing: order_number, pickup_location
+      }
+    }
+  ]
 }
 ```
 
 ## 🔧 Environment Variables
 
 ### New Variables Added
+
 - `pendingAdminTemplateId`: Auto-populated from pending admin approval templates
 
 ### Existing Variables Used
+
 - `baseUrl`: Server base URL
 - `accessToken`: JWT authentication token
 - `templateId`: Template ID for operations
@@ -116,45 +175,48 @@ The **Complete-WhatsApp-Server-API.postman_collection.json** has been updated to
 ## 🧪 Test Scripts
 
 ### Template Admin Approval Tests
+
 ```javascript
 // Auto-save template ID for chaining
 if (pm.response.code === 200) {
-    const response = pm.response.json();
-    if (response.data.templates && response.data.templates.length > 0) {
-        const firstTemplate = response.data.templates[0];
-        pm.environment.set('pendingAdminTemplateId', firstTemplate.id);
-    }
+  const response = pm.response.json();
+  if (response.data.templates && response.data.templates.length > 0) {
+    const firstTemplate = response.data.templates[0];
+    pm.environment.set("pendingAdminTemplateId", firstTemplate.id);
+  }
 }
 
 // Validate approval success
 if (pm.response.code === 200) {
-    const response = pm.response.json();
-    console.log('Template admin approved successfully');
-    console.log('Template parameters:', response.data.template.parameters);
+  const response = pm.response.json();
+  console.log("Template admin approved successfully");
+  console.log("Template parameters:", response.data.template.parameters);
 }
 ```
 
 ### Audience Validation Tests
+
 ```javascript
 // Test successful audience addition
 if (pm.response.code === 201) {
-    const response = pm.response.json();
-    console.log('Audience added successfully');
-    console.log('Total processed:', response.data.total_processed);
+  const response = pm.response.json();
+  console.log("Audience added successfully");
+  console.log("Total processed:", response.data.total_processed);
 }
 
 // Test validation error detection
 if (pm.response.code === 400) {
-    const response = pm.response.json();
-    if (response.message.includes('Template parameter validation failed')) {
-        console.log('✓ Parameter validation working correctly');
-    }
+  const response = pm.response.json();
+  if (response.message.includes("Template parameter validation failed")) {
+    console.log("✓ Parameter validation working correctly");
+  }
 }
 ```
 
 ## 🔄 Workflow Integration
 
 ### Complete Template Approval Workflow
+
 1. **Login Super Admin** → Get authentication token
 2. **Create Template** → Create new template
 3. **Submit for Approval** → Submit for standard approval
@@ -167,6 +229,7 @@ if (pm.response.code === 400) {
 10. **Add Audience (Invalid)** → Test validation error handling
 
 ### Testing Scenarios
+
 - ✅ **Happy Path**: All approvals and validations pass
 - ✅ **Validation Errors**: Missing parameters trigger errors
 - ✅ **Permission Errors**: Non-admin users get access denied
@@ -175,11 +238,13 @@ if (pm.response.code === 400) {
 ## 📊 Response Validation
 
 ### Success Responses
+
 - **200 OK**: Successful operations
 - **201 Created**: Successful audience addition
 - **Auto-logging**: Important data logged to console
 
 ### Error Responses
+
 - **400 Bad Request**: Validation failures with detailed messages
 - **403 Forbidden**: Permission denied for non-admin users
 - **404 Not Found**: Template or campaign not found
@@ -187,18 +252,21 @@ if (pm.response.code === 400) {
 ## 🚀 Usage Benefits
 
 ### For Developers
+
 - **Complete Testing**: End-to-end workflow testing
 - **Error Scenarios**: Comprehensive error case coverage
 - **Automation**: Auto-populated variables reduce manual work
 - **Validation**: Built-in response validation
 
 ### For QA Teams
+
 - **Regression Testing**: Consistent test scenarios
 - **Edge Cases**: Invalid data testing included
 - **Documentation**: Clear examples and expected results
 - **Traceability**: Logged results for debugging
 
 ### For API Users
+
 - **Learning**: Real examples of API usage
 - **Integration**: Ready-to-use request templates
 - **Troubleshooting**: Error scenarios help debug issues
@@ -236,6 +304,7 @@ Complete WhatsApp Server API/
 ## ✅ Quality Assurance
 
 ### Validation Checks
+
 - ✅ All new endpoints included
 - ✅ Proper authentication headers
 - ✅ Realistic request bodies
@@ -246,6 +315,7 @@ Complete WhatsApp Server API/
 - ✅ Console logging for debugging
 
 ### Testing Coverage
+
 - ✅ Template admin approval workflow
 - ✅ Parameter mapping configuration
 - ✅ Audience parameter validation

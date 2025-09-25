@@ -614,7 +614,11 @@ const getPendingAdminApprovalTemplates = asyncHandler(async (req, res) => {
 // Admin approve template for campaign usage
 const adminApproveTemplate = asyncHandler(async (req, res) => {
   const { templateId } = req.params;
-  const { parameters } = req.body;
+  const {
+    parameters,
+    is_auto_reply_template = false,
+    button_mappings = {},
+  } = req.body;
 
   if (!["super_admin", "system_admin"].includes(req.user.role)) {
     throw new AppError(
@@ -641,10 +645,164 @@ const adminApproveTemplate = asyncHandler(async (req, res) => {
     throw new AppError("Parameters must be a valid object", 400);
   }
 
+  // Parse template components to extract required parameters and buttons
+  const components =
+    typeof template.components === "string"
+      ? JSON.parse(template.components)
+      : template.components;
+
+  // Extract all parameter placeholders from template body
+  const bodyComponent = components?.find((comp) => comp.type === "BODY");
+  const requiredParameters = [];
+
+  if (bodyComponent && bodyComponent.text) {
+    const parameterMatches = bodyComponent.text.match(/\{\{(\d+)\}\}/g);
+    if (parameterMatches) {
+      parameterMatches.forEach((match) => {
+        const paramNumber = match.replace(/[{}]/g, "");
+        if (!requiredParameters.includes(paramNumber)) {
+          requiredParameters.push(paramNumber);
+        }
+      });
+    }
+  }
+
+  // Validate that all required parameters are provided
+  if (requiredParameters.length > 0) {
+    if (!parameters || Object.keys(parameters).length === 0) {
+      throw new AppError(
+        `Template requires parameter mappings for placeholders: ${requiredParameters
+          .map((p) => `{{${p}}}`)
+          .join(", ")}`,
+        400
+      );
+    }
+
+    const missingParameters = requiredParameters.filter(
+      (param) => !parameters[param]
+    );
+    if (missingParameters.length > 0) {
+      throw new AppError(
+        `Missing parameter mappings for placeholders: ${missingParameters
+          .map((p) => `{{${p}}}`)
+          .join(", ")}. Required parameters: ${requiredParameters
+          .map((p) => `{{${p}}}`)
+          .join(", ")}`,
+        400
+      );
+    }
+
+    // Validate that no extra parameters are provided
+    const extraParameters = Object.keys(parameters).filter(
+      (param) => !requiredParameters.includes(param)
+    );
+    if (extraParameters.length > 0) {
+      throw new AppError(
+        `Invalid parameter mappings provided: ${extraParameters
+          .map((p) => `{{${p}}}`)
+          .join(", ")}. Template only has parameters: ${requiredParameters
+          .map((p) => `{{${p}}}`)
+          .join(", ")}`,
+        400
+      );
+    }
+  }
+
+  // Check for interactive buttons
+  const buttonComponent = components?.find((comp) => comp.type === "BUTTONS");
+  const hasInteractiveButtons = !!(buttonComponent && buttonComponent.buttons);
+  let detectedButtons = [];
+
+  if (hasInteractiveButtons) {
+    detectedButtons = buttonComponent.buttons.map((button) => ({
+      text: button.text,
+      type: button.type,
+    }));
+  }
+
+  // Validate button mappings if template has interactive buttons
+  if (hasInteractiveButtons && !is_auto_reply_template) {
+    if (Object.keys(button_mappings).length === 0) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "Template has interactive buttons and requires button mappings",
+        data: {
+          detected_buttons: detectedButtons,
+          requires_button_mappings: true,
+          available_auto_reply_templates:
+            await Template.findAutoReplyTemplatesForButtons(
+              template.organization_id
+            ),
+        },
+      });
+    }
+
+    // Validate that button mappings match detected buttons exactly
+    const detectedButtonTexts = detectedButtons.map((btn) => btn.text);
+    const providedButtonTexts = Object.keys(button_mappings);
+
+    const missingButtons = detectedButtonTexts.filter(
+      (btnText) => !providedButtonTexts.includes(btnText)
+    );
+    const extraButtons = providedButtonTexts.filter(
+      (btnText) => !detectedButtonTexts.includes(btnText)
+    );
+
+    if (missingButtons.length > 0 || extraButtons.length > 0) {
+      let errorMessage = "Button mapping validation failed. ";
+      if (missingButtons.length > 0) {
+        errorMessage += `Missing mappings for buttons: [${missingButtons.join(
+          ", "
+        )}]. `;
+      }
+      if (extraButtons.length > 0) {
+        errorMessage += `Invalid button mappings provided: [${extraButtons.join(
+          ", "
+        )}]. `;
+      }
+      errorMessage += `Template buttons are: [${detectedButtonTexts.join(
+        ", "
+      )}]`;
+
+      throw new AppError(errorMessage, 400);
+    }
+
+    // Validate that all mapped template IDs exist and are auto-reply templates
+    const mappedTemplateIds = Object.values(button_mappings);
+    for (const mappedTemplateId of mappedTemplateIds) {
+      const mappedTemplate = await Template.findById(mappedTemplateId);
+      if (!mappedTemplate) {
+        throw new AppError(
+          `Mapped template ${mappedTemplateId} not found`,
+          400
+        );
+      }
+      if (!mappedTemplate.is_auto_reply_template) {
+        throw new AppError(
+          `Template ${mappedTemplate.name} is not marked as auto-reply template`,
+          400
+        );
+      }
+      if (mappedTemplate.organization_id !== template.organization_id) {
+        throw new AppError(
+          `Template ${mappedTemplate.name} belongs to different organization`,
+          400
+        );
+      }
+    }
+  }
+
+  const finalIsAutoReply = is_auto_reply_template;
+  const finalButtonMappings =
+    hasInteractiveButtons && !is_auto_reply_template ? button_mappings : {};
+
   const updatedTemplate = await Template.adminApproveTemplate(
     templateId,
     req.user.id,
-    parameters || {}
+    parameters || {},
+    finalIsAutoReply,
+    finalButtonMappings
   );
 
   logger.info("Template admin approved", {
@@ -652,6 +810,11 @@ const adminApproveTemplate = asyncHandler(async (req, res) => {
     templateName: template.name,
     adminApprovedBy: req.user.id,
     parameters: parameters || {},
+    isAutoReplyTemplate: finalIsAutoReply,
+    hasInteractiveButtons,
+    buttonMappings: finalButtonMappings,
+    requiredParameters,
+    detectedButtons,
   });
 
   res.json({
@@ -659,6 +822,9 @@ const adminApproveTemplate = asyncHandler(async (req, res) => {
     message: "Template admin approved successfully",
     data: {
       template: Template.parseTemplate(updatedTemplate),
+      has_interactive_buttons: hasInteractiveButtons,
+      detected_buttons: detectedButtons,
+      required_parameters: requiredParameters,
     },
   });
 });
@@ -822,6 +988,116 @@ const getAllTemplates = asyncHandler(async (req, res) => {
   }
 });
 
+// Get auto reply templates for organization
+const getAutoReplyTemplates = asyncHandler(async (req, res) => {
+  const { organizationId } = req.params;
+
+  // Check organization access
+  if (
+    req.user.role === "organization_admin" &&
+    req.user.organization_id !== organizationId
+  ) {
+    throw new AppError("Access denied to this organization", 403);
+  }
+
+  if (
+    req.user.role === "organization_user" &&
+    req.user.organization_id !== organizationId
+  ) {
+    throw new AppError("Access denied to this organization", 403);
+  }
+
+  const templates = await Template.findAutoReplyTemplates(organizationId);
+
+  res.json({
+    success: true,
+    data: {
+      templates,
+    },
+  });
+});
+
+// Update auto reply template status
+const updateAutoReplyStatus = asyncHandler(async (req, res) => {
+  const { templateId } = req.params;
+  const { is_auto_reply_template } = req.body;
+
+  if (!["super_admin", "system_admin"].includes(req.user.role)) {
+    throw new AppError(
+      "Only super admin and system admin can update auto reply status",
+      403
+    );
+  }
+
+  if (typeof is_auto_reply_template !== "boolean") {
+    throw new AppError("is_auto_reply_template must be a boolean", 400);
+  }
+
+  const template = await Template.findById(templateId);
+  if (!template) {
+    throw new AppError("Template not found", 404);
+  }
+
+  const updatedTemplate = await Template.updateAutoReplyStatus(
+    templateId,
+    is_auto_reply_template
+  );
+
+  logger.info("Template auto reply status updated", {
+    templateId,
+    templateName: template.name,
+    updatedBy: req.user.id,
+    isAutoReplyTemplate: is_auto_reply_template,
+  });
+
+  res.json({
+    success: true,
+    message: "Auto reply status updated successfully",
+    data: {
+      template: Template.parseTemplate(updatedTemplate),
+    },
+  });
+});
+
+// Get template details for admin approval (including button analysis)
+const getTemplateForAdminApproval = asyncHandler(async (req, res) => {
+  const { templateId } = req.params;
+
+  if (!["super_admin", "system_admin"].includes(req.user.role)) {
+    throw new AppError(
+      "Only super admin and system admin can access admin approval details",
+      403
+    );
+  }
+
+  const template = await Template.findById(templateId);
+  if (!template) {
+    throw new AppError("Template not found", 404);
+  }
+
+  const components =
+    typeof template.components === "string"
+      ? JSON.parse(template.components)
+      : template.components;
+
+  const hasInteractiveButtons = Template.hasInteractiveButtons(components);
+  const detectedButtons = Template.detectInteractiveButtons(components);
+  const availableAutoReplyTemplates =
+    await Template.findAutoReplyTemplatesForButtons(template.organization_id);
+
+  res.json({
+    success: true,
+    data: {
+      template: Template.parseTemplate(template),
+      has_interactive_buttons: hasInteractiveButtons,
+      detected_buttons: detectedButtons,
+      available_auto_reply_templates: availableAutoReplyTemplates,
+      requires_button_mappings:
+        hasInteractiveButtons && !template.is_auto_reply_template,
+    },
+  });
+});
+
 module.exports = {
   getAllTemplates,
   getTemplates,
@@ -838,4 +1114,7 @@ module.exports = {
   adminApproveTemplate,
   adminRejectTemplate,
   updateTemplateParameters,
+  getAutoReplyTemplates,
+  updateAutoReplyStatus,
+  getTemplateForAdminApproval,
 };
