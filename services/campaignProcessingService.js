@@ -203,7 +203,7 @@ class CampaignProcessingService {
                ca.attributes, ca.message_status, ca.created_at, ca.generated_asset_urls
         FROM campaign_audience ca
         WHERE ca.campaign_id = $1
-        AND ca.message_status = 'pending'
+        AND ca.message_status = 'asset_generated'
         ORDER BY ca.created_at ASC
       `;
 
