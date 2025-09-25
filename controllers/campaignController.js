@@ -737,7 +737,64 @@ const retryFailedMessages = asyncHandler(async (req, res) => {
   }
 });
 
+// Get all campaigns with role-based filtering
+const getAllCampaigns = asyncHandler(async (req, res) => {
+  const {
+    page = 1,
+    limit = 10,
+    status,
+    campaign_type,
+    template_id,
+  } = req.query;
+  const offset = (page - 1) * limit;
+
+  const filters = {
+    limit: parseInt(limit),
+    offset: parseInt(offset),
+  };
+
+  if (status) filters.status = status;
+  if (campaign_type) filters.campaign_type = campaign_type;
+  if (template_id) filters.template_id = template_id;
+
+  let campaigns, total;
+
+  try {
+    // Role-based filtering
+    if (["super_admin", "system_admin"].includes(req.user.role)) {
+      // Super admin and system admin can see all campaigns
+      campaigns = await Campaign.findAll(filters);
+      total = await Campaign.count();
+    } else {
+      // Organization admin and user can only see their organization's campaigns
+      campaigns = await Campaign.findByOrganization(
+        req.user.organization_id,
+        filters
+      );
+      total = await Campaign.count({
+        organization_id: req.user.organization_id,
+      });
+    }
+
+    res.json({
+      success: true,
+      data: {
+        campaigns,
+        pagination: {
+          page: parseInt(page),
+          limit: parseInt(limit),
+          total,
+          pages: Math.ceil(total / limit),
+        },
+      },
+    });
+  } catch (error) {
+    throw new AppError(`Error fetching campaigns: ${error.message}`, 500);
+  }
+});
+
 module.exports = {
+  getAllCampaigns,
   getCampaigns,
   getCampaignById,
   createCampaign,

@@ -146,4 +146,17 @@ router.post(
   templateController.syncTemplatesFromWhatsApp
 );
 
+// Get all templates (role-based filtering)
+router.get(
+  "/",
+  authorize(
+    "super_admin",
+    "system_admin",
+    "organization_admin",
+    "organization_user"
+  ),
+  validatePagination,
+  templateController.getAllTemplates
+);
+
 module.exports = router;

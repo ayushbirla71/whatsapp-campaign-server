@@ -1,4 +1,4 @@
-const pool = require('../config/database');
+const pool = require("../config/database");
 
 class BaseModel {
   constructor(tableName) {
@@ -12,37 +12,46 @@ class BaseModel {
       const result = await this.pool.query(query, [id]);
       return result.rows[0] || null;
     } catch (error) {
-      throw new Error(`Error finding ${this.tableName} by ID: ${error.message}`);
+      throw new Error(
+        `Error finding ${this.tableName} by ID: ${error.message}`
+      );
     }
   }
 
-  async findAll(conditions = {}, limit = null, offset = null) {
+  async findAll(filters = {}) {
     try {
       let query = `SELECT * FROM ${this.tableName}`;
       const values = [];
       let paramCount = 0;
 
+      // Handle WHERE conditions (exclude limit and offset)
+      const conditions = { ...filters };
+      delete conditions.limit;
+      delete conditions.offset;
+
       if (Object.keys(conditions).length > 0) {
-        const whereClause = Object.keys(conditions).map(key => {
-          paramCount++;
-          values.push(conditions[key]);
-          return `${key} = $${paramCount}`;
-        }).join(' AND ');
+        const whereClause = Object.keys(conditions)
+          .map((key) => {
+            paramCount++;
+            values.push(conditions[key]);
+            return `${key} = $${paramCount}`;
+          })
+          .join(" AND ");
         query += ` WHERE ${whereClause}`;
       }
 
       query += ` ORDER BY created_at DESC`;
 
-      if (limit) {
+      if (filters.limit) {
         paramCount++;
         query += ` LIMIT $${paramCount}`;
-        values.push(limit);
+        values.push(filters.limit);
       }
 
-      if (offset) {
+      if (filters.offset) {
         paramCount++;
         query += ` OFFSET $${paramCount}`;
-        values.push(offset);
+        values.push(filters.offset);
       }
 
       const result = await this.pool.query(query, values);
@@ -56,8 +65,8 @@ class BaseModel {
     try {
       const keys = Object.keys(data);
       const values = Object.values(data);
-      const placeholders = keys.map((_, index) => `$${index + 1}`).join(', ');
-      const columns = keys.join(', ');
+      const placeholders = keys.map((_, index) => `$${index + 1}`).join(", ");
+      const columns = keys.join(", ");
 
       const query = `
         INSERT INTO ${this.tableName} (${columns})
@@ -76,12 +85,14 @@ class BaseModel {
     try {
       const keys = Object.keys(data);
       const values = Object.values(data);
-      
+
       if (keys.length === 0) {
-        throw new Error('No data provided for update');
+        throw new Error("No data provided for update");
       }
 
-      const setClause = keys.map((key, index) => `${key} = $${index + 1}`).join(', ');
+      const setClause = keys
+        .map((key, index) => `${key} = $${index + 1}`)
+        .join(", ");
       values.push(id);
 
       const query = `
@@ -115,11 +126,13 @@ class BaseModel {
       let paramCount = 0;
 
       if (Object.keys(conditions).length > 0) {
-        const whereClause = Object.keys(conditions).map(key => {
-          paramCount++;
-          values.push(conditions[key]);
-          return `${key} = $${paramCount}`;
-        }).join(' AND ');
+        const whereClause = Object.keys(conditions)
+          .map((key) => {
+            paramCount++;
+            values.push(conditions[key]);
+            return `${key} = $${paramCount}`;
+          })
+          .join(" AND ");
         query += ` WHERE ${whereClause}`;
       }
 

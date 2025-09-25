@@ -16,6 +16,7 @@ const templateRoutes = require("./routes/templates");
 const campaignRoutes = require("./routes/campaigns");
 const audienceRoutes = require("./routes/audience");
 const assetGenerateFilesRoutes = require("./routes/assetGenerateFiles");
+const adminRoutes = require("./routes/admin");
 
 // Create Express app
 const app = express();
@@ -91,6 +92,7 @@ app.use("/api/templates", templateRoutes);
 app.use("/api/campaigns", campaignRoutes);
 app.use("/api/audience", audienceRoutes);
 app.use("/api/asset-files", assetGenerateFilesRoutes);
+app.use("/api/admin", adminRoutes);
 
 // API documentation endpoint
 app.get("/api", (req, res) => {
@@ -172,6 +174,10 @@ app.get("/api", (req, res) => {
           "Get file versions",
         "PUT /api/asset-files/:id": "Update asset file",
         "DELETE /api/asset-files/:id": "Deactivate asset file",
+      },
+      admin: {
+        "GET /api/admin/pending-approvals":
+          "Get all pending approvals (templates and campaigns)",
       },
     },
   });

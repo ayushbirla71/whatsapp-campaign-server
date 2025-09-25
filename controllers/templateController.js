@@ -764,7 +764,66 @@ const updateTemplateParameters = asyncHandler(async (req, res) => {
   });
 });
 
+// Get all templates with role-based filtering
+const getAllTemplates = asyncHandler(async (req, res) => {
+  const {
+    page = 1,
+    limit = 10,
+    status,
+    category,
+    language,
+    whatsapp_status,
+  } = req.query;
+  const offset = (page - 1) * limit;
+
+  const filters = {
+    limit: parseInt(limit),
+    offset: parseInt(offset),
+  };
+
+  if (status) filters.status = status;
+  if (category) filters.category = category;
+  if (language) filters.language = language;
+  if (whatsapp_status) filters.whatsapp_status = whatsapp_status;
+
+  let templates, total;
+
+  try {
+    // Role-based filtering
+    if (["super_admin", "system_admin"].includes(req.user.role)) {
+      // Super admin and system admin can see all templates
+      templates = await Template.findAll(filters);
+      total = await Template.count();
+    } else {
+      // Organization admin and user can only see their organization's templates
+      templates = await Template.findByOrganization(
+        req.user.organization_id,
+        filters
+      );
+      total = await Template.count({
+        organization_id: req.user.organization_id,
+      });
+    }
+
+    res.json({
+      success: true,
+      data: {
+        templates,
+        pagination: {
+          page: parseInt(page),
+          limit: parseInt(limit),
+          total,
+          pages: Math.ceil(total / limit),
+        },
+      },
+    });
+  } catch (error) {
+    throw new AppError(`Error fetching templates: ${error.message}`, 500);
+  }
+});
+
 module.exports = {
+  getAllTemplates,
   getTemplates,
   getTemplateById,
   createTemplate,
