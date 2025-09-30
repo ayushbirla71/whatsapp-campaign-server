@@ -757,6 +757,68 @@ class Audience extends BaseModel {
 
     return errors;
   }
+
+  async findAllMasterAudience(filters = {}) {
+    try {
+      let query = `
+        SELECT am.*, 
+               u.first_name as created_by_name, 
+               u.last_name as created_by_lastname,
+               o.name as organization_name
+        FROM audience_master am
+        LEFT JOIN users u ON am.created_by = u.id
+        LEFT JOIN organizations o ON am.organization_id = o.id
+        WHERE 1=1
+      `;
+
+      const values = [];
+      let paramCount = 0;
+
+      // Apply filters
+      if (filters.search) {
+        paramCount++;
+        query += ` AND (am.name ILIKE $${paramCount} OR am.msisdn ILIKE $${paramCount})`;
+        values.push(`%${filters.search}%`);
+      }
+
+      if (filters.country_code) {
+        paramCount++;
+        query += ` AND am.country_code = $${paramCount}`;
+        values.push(filters.country_code);
+      }
+
+      if (filters.organization_id) {
+        paramCount++;
+        query += ` AND am.organization_id = $${paramCount}`;
+        values.push(filters.organization_id);
+      }
+
+      query += ` ORDER BY am.created_at DESC`;
+
+      if (filters.limit) {
+        paramCount++;
+        query += ` LIMIT $${paramCount}`;
+        values.push(filters.limit);
+      }
+
+      if (filters.offset) {
+        paramCount++;
+        query += ` OFFSET $${paramCount}`;
+        values.push(filters.offset);
+      }
+
+      const result = await this.pool.query(query, values);
+      return result.rows.map((row) => ({
+        ...row,
+        attributes:
+          typeof row.attributes === "string"
+            ? JSON.parse(row.attributes)
+            : row.attributes,
+      }));
+    } catch (error) {
+      throw new Error(`Error finding all master audience: ${error.message}`);
+    }
+  }
 }
 
 module.exports = new Audience();

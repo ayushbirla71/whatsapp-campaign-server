@@ -710,18 +710,24 @@ const adminApproveTemplate = asyncHandler(async (req, res) => {
 
   // Check for interactive buttons
   const buttonComponent = components?.find((comp) => comp.type === "BUTTONS");
+  const hasUrlButtons =
+    buttonComponent &&
+    buttonComponent.buttons &&
+    buttonComponent.buttons.some((button) => button.type !== "URL");
   const hasInteractiveButtons = !!(buttonComponent && buttonComponent.buttons);
   let detectedButtons = [];
 
   if (hasInteractiveButtons) {
-    detectedButtons = buttonComponent.buttons.map((button) => ({
-      text: button.text,
-      type: button.type,
-    }));
+    detectedButtons = buttonComponent.buttons
+      .map((button) => ({
+        text: button.text,
+        type: button.type,
+      }))
+      .filter((button) => button.type != "URL");
   }
 
   // Validate button mappings if template has interactive buttons
-  if (hasInteractiveButtons && !is_auto_reply_template) {
+  if (hasInteractiveButtons && !is_auto_reply_template && hasUrlButtons) {
     if (Object.keys(button_mappings).length === 0) {
       return res.status(400).json({
         success: false,

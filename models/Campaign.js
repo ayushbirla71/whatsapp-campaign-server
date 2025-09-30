@@ -413,6 +413,19 @@ class Campaign extends BaseModel {
     }
   }
 
+  async findCampaignById(campaignId) {
+    try {
+      const query = `
+        SELECT * FROM campaigns 
+        WHERE id = $1
+      `;
+      const result = await this.pool.query(query, [campaignId]);
+      return result.rows[0] || null;
+    } catch (error) {
+      throw new Error(`Error finding campaign by ID: ${error.message}`);
+    }
+  }
+
   // Validate campaign data before saving
   validateCampaign(campaignData) {
     const errors = [];

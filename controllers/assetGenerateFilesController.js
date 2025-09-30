@@ -197,6 +197,7 @@ const updateAssetFile = asyncHandler(async (req, res) => {
       template_id: assetFile.template_id,
       file_name: assetFile.file_name,
       file_content: updateData.file_content,
+      typeofcontent: assetFile.typeofcontent,
     });
 
     if (validationErrors.length > 0) {
@@ -230,7 +231,7 @@ const updateAssetFile = asyncHandler(async (req, res) => {
 // Create new version of asset file
 const createAssetFileVersion = asyncHandler(async (req, res) => {
   const { templateId } = req.params;
-  const { file_name, file_content, description, typeOfContent } = req.body;
+  const { file_name, file_content, description, typeofcontent } = req.body;
 
   // Check if template exists and user has access
   const template = await Template.findById(templateId);
@@ -254,9 +255,9 @@ const createAssetFileVersion = asyncHandler(async (req, res) => {
   }
 
   // Validate required fields
-  if (!file_name || !file_content || !typeOfContent) {
+  if (!file_name || !file_content || !typeofcontent) {
     throw new AppError(
-      "File name, content, and typeOfContent are required",
+      "File name, content, and typeofcontent are required",
       400
     );
   }
@@ -266,7 +267,7 @@ const createAssetFileVersion = asyncHandler(async (req, res) => {
     file_name,
     file_content,
     description,
-    typeOfContent,
+    typeofcontent,
     req.user.id
   );
 

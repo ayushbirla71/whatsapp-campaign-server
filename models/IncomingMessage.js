@@ -13,13 +13,21 @@ class IncomingMessage extends BaseModel {
   async create(messageData) {
     try {
       // Ensure raw_payload is stored as JSON
-      if (messageData.raw_payload && typeof messageData.raw_payload === "object") {
+      if (
+        messageData.raw_payload &&
+        typeof messageData.raw_payload === "object"
+      ) {
         messageData.raw_payload = JSON.stringify(messageData.raw_payload);
       }
 
       // Ensure interactive_data is stored as JSON
-      if (messageData.interactive_data && typeof messageData.interactive_data === "object") {
-        messageData.interactive_data = JSON.stringify(messageData.interactive_data);
+      if (
+        messageData.interactive_data &&
+        typeof messageData.interactive_data === "object"
+      ) {
+        messageData.interactive_data = JSON.stringify(
+          messageData.interactive_data
+        );
       }
 
       return await super.create(messageData);
@@ -105,9 +113,11 @@ class IncomingMessage extends BaseModel {
       }
 
       const result = await this.pool.query(query, values);
-      return result.rows.map(row => this.parseIncomingMessage(row));
+      return result.rows.map((row) => this.parseIncomingMessage(row));
     } catch (error) {
-      throw new Error(`Error finding incoming messages by organization: ${error.message}`);
+      throw new Error(
+        `Error finding incoming messages by organization: ${error.message}`
+      );
     }
   }
 
@@ -126,9 +136,11 @@ class IncomingMessage extends BaseModel {
       `;
 
       const result = await this.pool.query(query, [limit]);
-      return result.rows.map(row => this.parseIncomingMessage(row));
+      return result.rows.map((row) => this.parseIncomingMessage(row));
     } catch (error) {
-      throw new Error(`Error finding unprocessed incoming messages: ${error.message}`);
+      throw new Error(
+        `Error finding unprocessed incoming messages: ${error.message}`
+      );
     }
   }
 
@@ -140,12 +152,14 @@ class IncomingMessage extends BaseModel {
   async markAsProcessed(messageId) {
     try {
       const updateData = {
-        processed: true
+        processed: true,
       };
 
       return await this.update(messageId, updateData);
     } catch (error) {
-      throw new Error(`Error marking incoming message as processed: ${error.message}`);
+      throw new Error(
+        `Error marking incoming message as processed: ${error.message}`
+      );
     }
   }
 
@@ -162,9 +176,13 @@ class IncomingMessage extends BaseModel {
       `;
 
       const result = await this.pool.query(query, [whatsappMessageId]);
-      return result.rows.length > 0 ? this.parseIncomingMessage(result.rows[0]) : null;
+      return result.rows.length > 0
+        ? this.parseIncomingMessage(result.rows[0])
+        : null;
     } catch (error) {
-      throw new Error(`Error finding incoming message by WhatsApp message ID: ${error.message}`);
+      throw new Error(
+        `Error finding incoming message by WhatsApp message ID: ${error.message}`
+      );
     }
   }
 
@@ -211,9 +229,11 @@ class IncomingMessage extends BaseModel {
       }
 
       const result = await this.pool.query(query, values);
-      return result.rows.map(row => this.parseIncomingMessage(row));
+      return result.rows.map((row) => this.parseIncomingMessage(row));
     } catch (error) {
-      throw new Error(`Error finding incoming messages by phone number: ${error.message}`);
+      throw new Error(
+        `Error finding incoming messages by phone number: ${error.message}`
+      );
     }
   }
 
@@ -256,7 +276,9 @@ class IncomingMessage extends BaseModel {
       const result = await this.pool.query(query, values);
       return result.rows;
     } catch (error) {
-      throw new Error(`Error getting incoming message statistics: ${error.message}`);
+      throw new Error(
+        `Error getting incoming message statistics: ${error.message}`
+      );
     }
   }
 
@@ -280,7 +302,10 @@ class IncomingMessage extends BaseModel {
     }
 
     // Parse interactive_data JSON
-    if (message.interactive_data && typeof message.interactive_data === "string") {
+    if (
+      message.interactive_data &&
+      typeof message.interactive_data === "string"
+    ) {
       try {
         message.interactive_data = JSON.parse(message.interactive_data);
       } catch (error) {
@@ -354,9 +379,54 @@ class IncomingMessage extends BaseModel {
       }
 
       const result = await this.pool.query(query, values);
-      return result.rows.map(row => this.parseIncomingMessage(row));
+      return result.rows.map((row) => this.parseIncomingMessage(row));
     } catch (error) {
       throw new Error(`Error finding campaign responses: ${error.message}`);
+    }
+  }
+
+  /**
+   * Mark message for auto reply
+   */
+  async markForAutoReply(messageId, autoReplyTemplateId) {
+    try {
+      const query = `
+        UPDATE incoming_messages 
+        SET is_auto_reply = true, 
+            auto_reply_message_id = $1,
+            send_auto_reply_message = 'pending',
+            updated_at = NOW()
+        WHERE id = $2
+        RETURNING *
+      `;
+
+      const result = await this.pool.query(query, [
+        autoReplyTemplateId,
+        messageId,
+      ]);
+      return result.rows[0];
+    } catch (error) {
+      throw new Error(`Error marking message for auto reply: ${error.message}`);
+    }
+  }
+
+  /**
+   * Get pending auto reply messages
+   */
+  async getPendingAutoReplies(limit = 50) {
+    try {
+      const query = `
+        SELECT * FROM incoming_messages 
+        WHERE is_auto_reply = true 
+        AND send_auto_reply_message = 'pending'
+        ORDER BY created_at ASC
+        LIMIT $1
+      `;
+
+      const result = await this.pool.query(query, [limit]);
+      return result.rows;
+    } catch (error) {
+      throw new Error(`Error getting pending auto replies: ${error.message}`);
     }
   }
 }

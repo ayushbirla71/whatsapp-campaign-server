@@ -479,6 +479,54 @@ const updateMessageStatus = asyncHandler(async (req, res) => {
   });
 });
 
+// Get all master audience (super admin and system admin only)
+const getAllMasterAudience = asyncHandler(async (req, res) => {
+  const {
+    page = 1,
+    limit = 10,
+    search,
+    country_code,
+    organization_id,
+  } = req.query;
+  const offset = (page - 1) * limit;
+
+  if (
+    ![
+      "super_admin",
+      "system_admin",
+      "organization_admin",
+      "organization_user",
+    ].includes(req.user.role)
+  ) {
+    throw new AppError("Access denied", 403);
+  }
+
+  const filters = {
+    limit: parseInt(limit),
+    offset: parseInt(offset),
+  };
+
+  if (search) filters.search = search;
+  if (country_code) filters.country_code = country_code;
+  if (organization_id) filters.organization_id = organization_id;
+
+  const audience = await Audience.findAllMasterAudience(filters);
+  const total = await Audience.countFromTable({}, "audience_master");
+
+  res.json({
+    success: true,
+    data: {
+      audience,
+      pagination: {
+        page: parseInt(page),
+        limit: parseInt(limit),
+        total,
+        pages: Math.ceil(total / limit),
+      },
+    },
+  });
+});
+
 module.exports = {
   getMasterAudience,
   createMasterAudienceRecord,
@@ -487,4 +535,5 @@ module.exports = {
   addAudienceToCampaign,
   removeAudienceFromCampaign,
   updateMessageStatus,
+  getAllMasterAudience,
 };

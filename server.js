@@ -17,6 +17,7 @@ const campaignRoutes = require("./routes/campaigns");
 const audienceRoutes = require("./routes/audience");
 const assetGenerateFilesRoutes = require("./routes/assetGenerateFiles");
 const adminRoutes = require("./routes/admin");
+const dashboardRoutes = require("./routes/dashboard");
 
 // Create Express app
 const app = express();
@@ -93,6 +94,7 @@ app.use("/api/campaigns", campaignRoutes);
 app.use("/api/audience", audienceRoutes);
 app.use("/api/asset-files", assetGenerateFilesRoutes);
 app.use("/api/admin", adminRoutes);
+app.use("/api/dashboard", dashboardRoutes);
 
 // API documentation endpoint
 app.get("/api", (req, res) => {
@@ -188,6 +190,11 @@ app.get("/api", (req, res) => {
       admin: {
         "GET /api/admin/pending-approvals":
           "Get all pending approvals (templates and campaigns)",
+      },
+      dashboard: {
+        "GET /api/dashboard/overview": "Get dashboard overview (role-based)",
+        "GET /api/dashboard/stats": "Get dashboard statistics (role-based)",
+        "GET /api/dashboard/activities": "Get recent activities (role-based)",
       },
     },
   });

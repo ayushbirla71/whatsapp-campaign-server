@@ -152,7 +152,7 @@ class AssetGenerateFiles extends BaseModel {
     fileName,
     fileContent,
     description,
-    typeOfContent,
+    typeofcontent,
     createdBy
   ) {
     try {
@@ -187,7 +187,7 @@ class AssetGenerateFiles extends BaseModel {
         file_name: fileName,
         file_content: fileContent,
         description: description,
-        typeOfContent: typeOfContent,
+        typeofcontent: typeofcontent,
         version: nextVersion,
         is_active: true,
         created_by: createdBy,
@@ -237,12 +237,12 @@ class AssetGenerateFiles extends BaseModel {
       errors.push("File content is required");
     }
 
-    if (!assetFileData.typeOfContent) {
-      errors.push("typeOfContent is required");
+    if (!assetFileData.typeofcontent) {
+      errors.push("typeofcontent is required");
     } else if (
-      !["public", "personalized"].includes(assetFileData.typeOfContent)
+      !["public", "personalized"].includes(assetFileData.typeofcontent)
     ) {
-      errors.push('typeOfContent must be either "public" or "personalized"');
+      errors.push('typeofcontent must be either "public" or "personalized"');
     }
 
     // Validate file name format (should be a valid Python filename)
