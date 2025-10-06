@@ -27,7 +27,7 @@ class BackgroundJobProcessor {
     // Start individual services
     campaignProcessingService.start();
     messageRetryService.start();
-    autoReplyService.start();
+    // autoReplyService.start();
 
     // Start health check
     this.startHealthCheck();
@@ -50,7 +50,7 @@ class BackgroundJobProcessor {
     // Stop individual services
     campaignProcessingService.stop();
     messageRetryService.stop();
-    autoReplyService.stop();
+    // autoReplyService.stop();
 
     // Stop health check
     this.stopHealthCheck();
@@ -80,10 +80,10 @@ class BackgroundJobProcessor {
       }
 
       // Check if auto reply service is still running
-      if (!autoReplyService.isRunning) {
-        logger.warn("Auto reply service is not running, restarting...");
-        autoReplyService.start();
-      }
+      // if (!autoReplyService.isRunning) {
+      //   logger.warn("Auto reply service is not running, restarting...");
+      //   autoReplyService.start();
+      // }
 
       // Check SQS connectivity
       const sqsService = require("./sqsService");
@@ -176,7 +176,7 @@ class BackgroundJobProcessor {
   async triggerAutoReplyProcessing() {
     try {
       logger.info("Manually triggering auto reply processing");
-      await autoReplyService.triggerAutoReplyProcessing();
+      // await autoReplyService.triggerAutoReplyProcessing();
       logger.info("Manual auto reply processing completed");
     } catch (error) {
       logger.error("Error during manual auto reply processing", {
