@@ -347,9 +347,11 @@ class Message extends BaseModel {
         LEFT JOIN templates t ON c.template_id = t.id
         LEFT JOIN campaign_audience ca ON m.campaign_audience_id = ca.id
         WHERE m.message_status = 'failed'
+        AND COALESCE(m.is_retryable, true) = true
         AND m.retry_count < $1
+        AND (m.next_retry_at IS NULL OR m.next_retry_at <= NOW())
         AND m.campaign_id IS NOT NULL
-        ORDER BY m.updated_at ASC
+        ORDER BY m.next_retry_at ASC NULLS FIRST, m.updated_at ASC
         LIMIT $2
       `;
 

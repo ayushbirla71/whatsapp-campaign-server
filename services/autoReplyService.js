@@ -114,15 +114,15 @@ class AutoReplyService {
   async findPendingAutoReplyMessages() {
     try {
       const query = `
-        SELECT im.*, t.name as template_name, t.body_text, t.components, 
-               t.category, t.language, t.header_type, t.header_media_url, 
+        SELECT im.*, t.name as template_name, t.body_text, t.components,
+               t.category, t.language, t.header_type, t.header_media_url,
                t.footer_text, t.parameters
         FROM incoming_messages im
         JOIN templates t ON im.auto_reply_message_id = t.id
-        WHERE im.is_auto_reply = true 
+        WHERE im.is_auto_reply = true
         AND im.send_auto_reply_message = 'pending'
         AND t.approved_by_admin = 'approved'
-        AND t.is_auto_reply_template = false
+        AND t.is_auto_reply_template = true
         ORDER BY im.created_at ASC
         LIMIT 50
       `;
