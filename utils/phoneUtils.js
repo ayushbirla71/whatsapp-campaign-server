@@ -61,9 +61,32 @@ function isValidPhone(phoneNumber, defaultCountry = 'US') {
   }
 }
 
+
+const normalizeMSISDN = (number) => {
+  if (!number) return null;
+
+  let msisdn = number.toString().trim();
+
+  // Remove spaces & dashes
+  msisdn = msisdn.replace(/[\s-]/g, "");
+
+  // Add country code if missing (India example)
+  if (msisdn.length === 10) {
+    msisdn = "91" + msisdn;
+  }
+
+  if (!msisdn.startsWith("+")) {
+    msisdn = "+" + msisdn;
+  }
+
+  return /^\+\d{10,15}$/.test(msisdn) ? msisdn : null;
+};
+
+
 module.exports = {
   formatPhoneNumber,
   extractCountryCode,
-  isValidPhone
+  isValidPhone,
+  normalizeMSISDN,
 };
 

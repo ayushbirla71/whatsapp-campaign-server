@@ -10,33 +10,67 @@ class Conversation extends BaseModel {
    * Get or create conversation using database function
    * This ensures atomic operation and prevents duplicates
    */
+  // async getOrCreate(organizationId, customerPhone, options = {}) {
+  //   try {
+  //     const {
+  //       customerName = null,
+  //       conversationType = "general",
+  //       relatedCampaignId = null,
+  //     } = options;
+
+  //     const business_phone_number = "+918886959696"
+
+  //     const result = await pool.query(
+  //       `SELECT get_or_create_conversation($1, $2, $3, $4, $5, $6) as conversation_id`,
+  //       [
+  //         organizationId,
+  //         customerPhone,
+  //         customerName,
+  //         conversationType,
+  //         relatedCampaignId,
+  //         business_phone_number,
+  //       ]
+  //     );
+
+  //     const conversationId = result.rows[0].conversation_id;
+  //     return await this.findById(conversationId);
+  //   } catch (error) {
+  //     throw new Error(
+  //       `Error getting or creating conversation: ${error.message}`
+  //     );
+  //   }
+  // }
+
+
   async getOrCreate(organizationId, customerPhone, options = {}) {
-    try {
-      const {
-        customerName = null,
-        conversationType = "general",
-        relatedCampaignId = null,
-      } = options;
+  try {
+    const {
+      conversationType = "general",
+      relatedCampaignId = null,
+    } = options;
 
-      const result = await pool.query(
-        `SELECT get_or_create_conversation($1, $2, $3, $4, $5) as conversation_id`,
-        [
-          organizationId,
-          customerPhone,
-          customerName,
-          conversationType,
-          relatedCampaignId,
-        ]
-      );
+    const business_phone_number = "+918886959696";
 
-      const conversationId = result.rows[0].conversation_id;
-      return await this.findById(conversationId);
-    } catch (error) {
-      throw new Error(
-        `Error getting or creating conversation: ${error.message}`
-      );
-    }
+    const result = await pool.query(
+      `SELECT get_or_create_conversation($1, $2, $3, $4, $5) AS conversation_id`,
+      [
+        organizationId,
+        customerPhone,
+        business_phone_number,
+        conversationType,
+        relatedCampaignId,
+      ]
+    );
+
+    const conversationId = result.rows[0].conversation_id;
+    return await this.findById(conversationId);
+  } catch (error) {
+    throw new Error(
+      `Error getting or creating conversation: ${error.message}`
+    );
   }
+}
+
 
   /**
    * Find conversation by customer phone and organization

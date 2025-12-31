@@ -26,7 +26,7 @@ class BackgroundJobProcessor {
 
     // Start individual services
     campaignProcessingService.start();
-    messageRetryService.start();
+    // messageRetryService.start();
     // autoReplyService.start();
 
     // Start health check
@@ -76,7 +76,7 @@ class BackgroundJobProcessor {
       // Check if message retry service is still running
       if (!messageRetryService.isRunning) {
         logger.warn("Message retry service is not running, restarting...");
-        messageRetryService.start();
+        // messageRetryService.start();
       }
 
       // Check if auto reply service is still running

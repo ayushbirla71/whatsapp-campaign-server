@@ -15,6 +15,8 @@ class CustomMessageGenerator {
         to : audienceData.msisdn,
       };
 
+      console.log("baseMessage", baseMessage);  
+
       if (isTemplate) {
         if ( template.category === "AUTHENTICATION" ||
           template.category === "MARKETING" ||
@@ -35,6 +37,7 @@ class CustomMessageGenerator {
           return this.generateTextMessage(baseMessage, template, audienceData);
         }
       } else {
+        console.log("messageContent", messageContent);
         return this.generateTextMessage(baseMessage, messageContent, audienceData);
       }
     } catch (error) {
@@ -75,23 +78,25 @@ generateTemplateMessage(baseMessage, template, audienceData) {
  * Generate text message payload
  */
 
-
 generateTextMessage(baseMessage, messageContent, audienceData) {
-  let messageContent = messageContent || "";
+  let messageContentOne = messageContent || "";
 
+
+  console.log("messageContentOne", messageContentOne);
   // Replace placeholders with audience data
-  messageContent = this.replacePlaceholders(
+  messageContentOne = this.replacePlaceholders(
     messageContent,
     audienceData,
     {}
   );
+  console.log("messageContentOne", messageContentOne);
 
   return {
     ...baseMessage,
     messageType: "text",
     messageContent,
   };
-}   
+}
 
 /**
    * Generate template parameters from components and audience attributes
