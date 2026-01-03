@@ -30,7 +30,10 @@ class ConversationMessage extends BaseModel {
         templateParameters = null,
         contextMessageId = null,
         interactiveType = null,
-        interactiveData = null
+        interactiveData = null,
+        from_phone_number = null,
+        to_phone_number = null,
+        
       } = messageData;
 
       const result = await pool.query(
@@ -38,8 +41,9 @@ class ConversationMessage extends BaseModel {
           conversation_id, organization_id, direction, sent_by_user_id,
           message_type, message_content, media_url, media_type, caption, filename,
           whatsapp_message_id, message_status, template_name, template_language,
-          template_parameters, context_message_id, interactive_type, interactive_data
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
+          template_parameters, reply_to_message_id, interactive_type, interactive_data,
+          from_phone_number, to_phone_number
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20)
         RETURNING *`,
         [
           conversationId, organizationId, direction, sentByUserId,
@@ -47,7 +51,8 @@ class ConversationMessage extends BaseModel {
           whatsappMessageId, messageStatus, templateName, templateLanguage,
           templateParameters ? JSON.stringify(templateParameters) : null,
           contextMessageId, interactiveType,
-          interactiveData ? JSON.stringify(interactiveData) : null
+          interactiveData ? JSON.stringify(interactiveData) : null,
+          from_phone_number, to_phone_number
         ]
       );
 

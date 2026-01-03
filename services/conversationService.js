@@ -96,6 +96,8 @@ class ConversationService {
         templateLanguage = null,
         templateParameters = null,
         contextMessageId = null,
+        from_phone_number = null,
+        to_phone_number = null,
       } = messageData;
 
       // Get conversation to get customer phone
@@ -120,6 +122,9 @@ class ConversationService {
         templateParameters,
         contextMessageId,
         messageStatus: "pending",
+        from_phone_number,
+        to_phone_number,
+
       });
 
       // Send to SQS for WhatsApp delivery
@@ -134,12 +139,12 @@ class ConversationService {
         organizationId,
         campaignId: null, // Not from campaign
         campaignAudienceId: null, // Not from campaign
-        to: conversation.customer_phone,
-        from: null, // Will use organization's WhatsApp number
+        to: to_phone_number,
+        from: from_phone_number, // Will use organization's WhatsApp number
 
         // Message content
         messageType,
-        content: messageContent,
+        messageContent: messageContent,
         mediaUrl,
         mediaType,
         caption,
@@ -154,8 +159,8 @@ class ConversationService {
       };
 
       await sqsService.sendMessage(sqsPayload, {
-        messageGroupId: `conversation-${organizationId}`,
-        messageDeduplicationId: `conv-msg-${message.id}-${Date.now()}`,
+       messageGroupId:
+              process.env.SQS_MESSAGE_GROUP_ID || "whatsapp-outbound-messages",
       });
 
       return message;
@@ -182,5 +187,11 @@ class ConversationService {
     }
   }
 }
+
+
+
+
+
+
 
 module.exports = new ConversationService();
