@@ -122,7 +122,7 @@ class AutoReplyService {
         WHERE im.is_auto_reply = true
         AND im.send_auto_reply_message = 'pending'
         AND t.approved_by_admin = 'approved'
-        AND t.is_auto_reply_template = true
+        AND t.is_auto_reply_template = false
         ORDER BY im.created_at ASC
         LIMIT 50
       `;

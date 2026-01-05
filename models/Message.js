@@ -337,6 +337,7 @@ class Message extends BaseModel {
     try {
       const query = `
         SELECT m.*, c.id as campaign_id, c.organization_id, c.template_id,
+        m.id as messageId,
                t.name as template_name, t.category as template_category,
                t.language as template_language, t.components, t.body_text,
                t.header_type, t.header_media_url, t.footer_text, t.parameters,

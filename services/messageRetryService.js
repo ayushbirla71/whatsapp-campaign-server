@@ -124,6 +124,8 @@ class MessageRetryService {
         100
       );
 
+      console.log("result", result);
+
       // Parse messages - filtering now done in SQL query using next_retry_at
       const eligibleMessages = result.map((row) =>
         this.parseMessageForRetry(row)
@@ -155,7 +157,16 @@ class MessageRetryService {
       for (const message of messages) {
         try {
           // Generate SQS message payload
+          logger.info("Generating retry payload for message", {
+            messageId: message.id,
+          });
+          logger.info("message", message);
+
           const sqsPayload = await this.generateRetryPayload(message);
+
+          
+          logger.info("sqsPayload", sqsPayload);
+       
 
           if (sqsPayload) {
             sqsMessages.push(sqsPayload);
@@ -302,6 +313,8 @@ class MessageRetryService {
         throw new Error("Invalid message payload generated for retry");
       }
 
+      messagePayload.messageId = message.id;
+
       logger.info("Retry payload generated successfully", {
         messageId: message.id,
         payload: messagePayload,
@@ -369,6 +382,7 @@ class MessageRetryService {
       retry_count: row.retry_count || 0,
       message_status: row.message_status,
       updated_at: row.updated_at,
+      messageId: row.messageId,
     };
   }
 
