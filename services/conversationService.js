@@ -131,9 +131,10 @@ class ConversationService {
       // Note: The message sender Lambda expects specific fields
       const sqsPayload = {
         // Conversation-specific fields
-        messageId: message.id, // conversation_messages.id
+        conversationMessageId: message.id, // conversation_messages.id
         conversationId,
         source: "conversation",
+        // isConversationMessage: true,
 
         // Required fields for message sender Lambda
         organizationId,
