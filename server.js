@@ -19,6 +19,7 @@ const assetGenerateFilesRoutes = require("./routes/assetGenerateFiles");
 const adminRoutes = require("./routes/admin");
 const dashboardRoutes = require("./routes/dashboard");
 const conversationRoutes = require("./routes/conversations");
+const messageRoutes = require("./routes/messages");
 
 // Create Express app
 const app = express();
@@ -97,6 +98,7 @@ app.use("/api/asset-files", assetGenerateFilesRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/conversations", conversationRoutes);
+app.use("/api/messages", messageRoutes);
 
 // API documentation endpoint
 app.get("/api", (req, res) => {
