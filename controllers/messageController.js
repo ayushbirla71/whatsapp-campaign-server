@@ -1,4 +1,7 @@
 const pool = require("../config/database");
+const Conversation = require("../models/Conversation");
+const conversationService = require("../services/conversationService");
+const S3Service = require("../services/S3Service");
 
 /**
  * ===============================
@@ -8,7 +11,11 @@ const pool = require("../config/database");
  */
 exports.getInboxAudience = async (req, res) => {
   try {
-    const { organizationId } = req.query;
+    let organizationId = req.user.organization_id;
+    if(!organizationId){
+      organizationId  = req.query.organizationId;
+    }
+   
 
     if (!organizationId) {
       return res.status(400).json({
@@ -231,63 +238,68 @@ exports.canSendMessage = async (req, res) => {
  */
 exports.sendMessage = async (req, res) => {
   try {
-    const { conversationId } = req.params;
-    const { content, messageType = "text" } = req.body;
-
-    const userId = req.user?.id || null;
-
-    if (!content) {
-      return res.status(400).json({
-        success: false,
-        message: "Message content is required",
-      });
-    }
-
-    const sql = `
-      INSERT INTO conversation_messages (
-        conversation_id,
-        organization_id,
-        direction,
-        from_phone_number,
-        to_phone_number,
-        message_type,
-        message_content,
-        message_source,
-        sent_by_user_id
-      )
-      SELECT
-        c.id,
-        c.organization_id,
-        'outbound',
-        c.business_phone_number,
-        c.customer_phone_number,
-        $1,
-        $2,
-        'manual',
-        $3
-      FROM conversations c
-      WHERE c.id = $4
-      RETURNING id;
-    `;
-
-    const { rows } = await pool.query(sql, [
-      messageType,
-      content,
-      userId,
-      conversationId,
-    ]);
-
-    res.json({
-      success: true,
-      messageId: rows[0].id,
-    });
-  } catch (error) {
-    console.error("sendMessage error:", error);
-    res.status(500).json({
-      success: false,
-      message: error.message,
-    });
-  }
+    const conversationId = req.params.conversationId;
+    console.log("conversationId: ", conversationId);
+   
+         // Verify conversation exists and user has access
+         const conversation = await Conversation.findById(conversationId);
+         if (!conversation) {
+           return res.status(404).json({
+             success: false,
+             message: "Conversation not found",
+           });
+         }
+   
+         console.log("conversation.organization_id: ", conversation.organization_id);
+         console.log("req.user.organizationId: ", req.user.organization_id);
+   
+         if (conversation.organization_id !== req.user.organization_id) {
+           return res.status(403).json({
+             success: false,
+             message: "Access denied",
+           });
+         }
+   
+         let from_phone_number = conversation.business_phone_number;
+         let to_phone_number = conversation.customer_phone_number;
+   
+         const messageData = {
+           organizationId: req.user.organization_id,
+           conversationId,
+           senderId: req.user.userId,
+           from_phone_number,
+           to_phone_number,
+           messageType: req.body.messageType || "text",
+           messageContent: req.body.messageContent,
+           mediaUrl: req.body.mediaUrl,
+           mediaType: req.body.mediaType,
+           caption: req.body.caption,
+           templateName: req.body.templateName,
+           templateLanguage: req.body.templateLanguage,
+           templateParameters: req.body.templateParameters,
+           contextMessageId: req.body.contextMessageId,
+           direction: "outbound",
+   
+         };
+   
+         const message = await conversationService.sendMessage(
+           messageData,
+           req.user.userId
+         );
+   
+         res.status(201).json({
+           success: true,
+           message: "Message sent successfully",
+           data: message,
+         });
+       } catch (error) {
+         console.error("Error sending conversation message:", error);
+         res.status(500).json({
+           success: false,
+           message: "Failed to send message",
+           error: error.message,
+         });
+       }
 };
 
 
@@ -319,6 +331,42 @@ exports.markConversationRead = async (req, res) => {
     res.status(500).json({
       success: false,
       message: error.message,
+    });
+  }
+};
+
+
+exports.uploadMedia = async (req, res) => {
+  try {
+    const { file } = req;
+    console.log("file: ", req.file);
+
+    if (!file) {
+      return res.status(400).json({
+        success: false,
+        message: "No file uploaded",
+      });
+    }
+
+    // Upload to S3
+    const result = await S3Service.uploadFile(
+      file,
+      "whatsapp-media"
+    );
+
+    return res.json({
+      success: true,
+      data: {
+        url: result.url, // S3 URL
+        key: result.key, // store if needed
+      },
+    });
+  } catch (error) {
+    console.error("uploadMedia error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Failed to upload media",
     });
   }
 };
