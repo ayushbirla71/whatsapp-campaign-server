@@ -208,7 +208,7 @@ CREATE TABLE asset_generate_files (
     file_name VARCHAR(255) NOT NULL,
     file_content TEXT NOT NULL,
     description TEXT,
-    typeOfContent content_type NOT NULL,
+    typeofcontent content_type NOT NULL,
     version VARCHAR(50) DEFAULT '1.0',
     is_active BOOLEAN DEFAULT true,
 
@@ -400,6 +400,7 @@ CREATE TABLE messages (
     -- Message routing
     from_number VARCHAR(255) NOT NULL,
     to_number VARCHAR(255) NOT NULL,
+    is_auto_reply BOOLEAN DEFAULT false,  
 
     -- Message content
     message_type VARCHAR(50) DEFAULT 'text',
@@ -413,6 +414,8 @@ CREATE TABLE messages (
     template_name VARCHAR(255),
     template_language VARCHAR(10),
     template_parameters JSONB,
+    original_message_id VARCHAR(255) default null,
+    
 
     -- Message direction and status
     is_incoming BOOLEAN DEFAULT false,
@@ -454,6 +457,9 @@ CREATE TABLE incoming_messages (
     -- Context (if replying to a campaign message)
     context_message_id VARCHAR(255),
     context_campaign_id UUID REFERENCES campaigns(id) ON DELETE SET NULL,
+    is_auto_reply BOOLEAN DEFAULT false,
+    auto_reply_message_id UUID REFERENCES templates(id) ON DELETE SET NULL,
+    send_auto_reply_message VARCHAR(20) DEFAULT 'pending',
 
     raw_payload JSONB NOT NULL,
     processed BOOLEAN DEFAULT false,
@@ -491,7 +497,7 @@ CREATE INDEX idx_campaign_audience_msisdn ON campaign_audience(msisdn);
 CREATE INDEX idx_campaign_audience_message_status ON campaign_audience(message_status);
 CREATE INDEX idx_asset_generate_files_template_id ON asset_generate_files(template_id);
 CREATE INDEX idx_asset_generate_files_is_active ON asset_generate_files(is_active);
-CREATE INDEX idx_asset_generate_files_type_of_content ON asset_generate_files(typeOfContent);
+CREATE INDEX idx_asset_generate_files_type_of_content ON asset_generate_files(typeofcontent);
 CREATE INDEX idx_campaigns_asset_generation_status ON campaigns(asset_generation_status);
 CREATE INDEX idx_campaign_audience_asset_generation_status ON campaign_audience(asset_generation_status);
 

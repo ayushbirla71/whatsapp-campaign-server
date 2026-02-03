@@ -1,11 +1,13 @@
 const campaignProcessingService = require("./campaignProcessingService");
 const messageRetryService = require("./messageRetryService");
+const autoReplyService = require("./autoReplyService");
 const logger = require("../utils/logger");
 
 class BackgroundJobProcessor {
   constructor() {
     this.isRunning = false;
     this.intervalId = null;
+    this.healthCheckIntervalId = null;
     this.processingInterval =
       parseInt(process.env.BACKGROUND_JOB_INTERVAL) || 60000; // 1 minute default
   }
@@ -13,36 +15,30 @@ class BackgroundJobProcessor {
   /**
    * Start the background job processor
    */
-  start() {
+  async start() {
     if (this.isRunning) {
       logger.warn("Background job processor is already running");
       return;
     }
 
     this.isRunning = true;
-    logger.info("Starting background job processor", {
-      processingInterval: this.processingInterval,
-    });
+    logger.info("Starting background job processor");
 
-    // Start the campaign processing service
+    // Start individual services
     campaignProcessingService.start();
-
-    // Start the message retry service
     messageRetryService.start();
+    autoReplyService.start();
 
-    // Set up periodic health checks and monitoring
-    this.intervalId = setInterval(() => {
-      this.performHealthCheck();
-    }, this.processingInterval);
+    // Start health check
+    this.startHealthCheck();
 
-    // Handle graceful shutdown
-    this.setupGracefulShutdown();
+    logger.info("Background job processor started successfully");
   }
 
   /**
    * Stop the background job processor
    */
-  stop() {
+  async stop() {
     if (!this.isRunning) {
       logger.warn("Background job processor is not running");
       return;
@@ -51,17 +47,13 @@ class BackgroundJobProcessor {
     this.isRunning = false;
     logger.info("Stopping background job processor");
 
-    // Stop the campaign processing service
+    // Stop individual services
     campaignProcessingService.stop();
-
-    // Stop the message retry service
     messageRetryService.stop();
+    autoReplyService.stop();
 
-    // Clear the interval
-    if (this.intervalId) {
-      clearInterval(this.intervalId);
-      this.intervalId = null;
-    }
+    // Stop health check
+    this.stopHealthCheck();
 
     logger.info("Background job processor stopped");
   }
@@ -84,7 +76,13 @@ class BackgroundJobProcessor {
       // Check if message retry service is still running
       if (!messageRetryService.isRunning) {
         logger.warn("Message retry service is not running, restarting...");
-        messageRetryService.start();
+        // messageRetryService.start();
+      }
+
+      // Check if auto reply service is still running
+      if (!autoReplyService.isRunning) {
+        logger.warn("Auto reply service is not running, restarting...");
+        autoReplyService.start();
       }
 
       // Check SQS connectivity
@@ -168,6 +166,50 @@ class BackgroundJobProcessor {
         error: error.message,
       });
       throw error;
+    }
+  }
+
+  /**
+   * Manually trigger auto reply processing
+   * @returns {Promise<void>}
+   */
+  async triggerAutoReplyProcessing() {
+    try {
+      logger.info("Manually triggering auto reply processing");
+      // await autoReplyService.triggerAutoReplyProcessing();
+      logger.info("Manual auto reply processing completed");
+    } catch (error) {
+      logger.error("Error during manual auto reply processing", {
+        error: error.message,
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * Start health check interval
+   */
+  startHealthCheck() {
+    if (this.healthCheckIntervalId) {
+      clearInterval(this.healthCheckIntervalId);
+    }
+
+    // Run health check every 5 minutes
+    this.healthCheckIntervalId = setInterval(() => {
+      this.performHealthCheck();
+    }, 5 * 60 * 1000);
+
+    logger.info("Health check started");
+  }
+
+  /**
+   * Stop health check interval
+   */
+  stopHealthCheck() {
+    if (this.healthCheckIntervalId) {
+      clearInterval(this.healthCheckIntervalId);
+      this.healthCheckIntervalId = null;
+      logger.info("Health check stopped");
     }
   }
 }

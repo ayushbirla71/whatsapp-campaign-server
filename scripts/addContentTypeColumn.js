@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 
 /**
- * Migration script to add typeOfContent column to asset_generate_files table
- * This script adds the typeOfContent column with content_type enum
+ * Migration script to add typeofcontent column to asset_generate_files table
+ * This script adds the typeofcontent column with content_type enum
  */
 
 require("dotenv").config();
@@ -23,7 +23,7 @@ async function addContentTypeColumn() {
 
   try {
     console.log(
-      "🚀 Adding typeOfContent column to asset_generate_files table...\n"
+      "🚀 Adding typeofcontent column to asset_generate_files table...\n"
     );
 
     // Check if asset_generate_files table exists
@@ -58,7 +58,7 @@ async function addContentTypeColumn() {
       console.log("✅ content_type enum already exists");
     }
 
-    // Check if typeOfContent column already exists
+    // Check if typeofcontent column already exists
     const columnExists = await client.query(`
       SELECT EXISTS (
         SELECT FROM information_schema.columns 
@@ -69,31 +69,31 @@ async function addContentTypeColumn() {
     `);
 
     if (columnExists.rows[0].exists) {
-      console.log("✅ typeOfContent column already exists");
+      console.log("✅ typeofcontent column already exists");
       return;
     }
 
     // Start transaction
     await client.query("BEGIN");
 
-    // Add typeOfContent column
+    // Add typeofcontent column
     await client.query(`
       ALTER TABLE asset_generate_files 
-      ADD COLUMN "typeOfContent" content_type NOT NULL DEFAULT 'public';
+      ADD COLUMN "typeofcontent" content_type NOT NULL DEFAULT 'public';
     `);
 
     // Add index
     await client.query(`
       CREATE INDEX idx_asset_generate_files_type_of_content 
-      ON asset_generate_files("typeOfContent");
+      ON asset_generate_files("typeofcontent");
     `);
 
     // Commit transaction
     await client.query("COMMIT");
 
-    console.log("✅ typeOfContent column added successfully!");
+    console.log("✅ typeofcontent column added successfully!");
     console.log("\n📋 Column details:");
-    console.log("  - Name: typeOfContent");
+    console.log("  - Name: typeofcontent");
     console.log("  - Type: content_type enum");
     console.log("  - Values: public, personalized");
     console.log("  - Default: public");
@@ -112,7 +112,7 @@ async function checkContentTypeColumn() {
   const client = await pool.connect();
 
   try {
-    console.log("🔍 Checking typeOfContent column status...\n");
+    console.log("🔍 Checking typeofcontent column status...\n");
 
     // Check if asset_generate_files table exists
     const tableExists = await client.query(`
@@ -157,18 +157,18 @@ async function checkContentTypeColumn() {
       );
     }
 
-    // Check if typeOfContent column exists (check both cases)
+    // Check if typeofcontent column exists (check both cases)
     const columnExists = await client.query(`
       SELECT EXISTS (
         SELECT FROM information_schema.columns
         WHERE table_schema = 'public'
         AND table_name = 'asset_generate_files'
-        AND (column_name = 'typeofcontent' OR column_name = 'typeOfContent')
+        AND (column_name = 'typeofcontent' OR column_name = 'typeofcontent')
       );
     `);
 
     console.log(
-      `typeOfContent column: ${
+      `typeofcontent column: ${
         columnExists.rows[0].exists ? "✅ Exists" : "❌ Missing"
       }`
     );
@@ -180,7 +180,7 @@ async function checkContentTypeColumn() {
         FROM information_schema.columns
         WHERE table_schema = 'public'
         AND table_name = 'asset_generate_files'
-        AND (column_name = 'typeofcontent' OR column_name = 'typeOfContent');
+        AND (column_name = 'typeofcontent' OR column_name = 'typeofcontent');
       `);
 
       if (columnDetails.rows.length > 0) {
@@ -201,7 +201,7 @@ async function checkContentTypeColumn() {
       `);
 
       console.log(
-        `Index on typeOfContent: ${
+        `Index on typeofcontent: ${
           indexExists.rows[0].exists ? "✅ Exists" : "❌ Missing"
         }`
       );
@@ -209,16 +209,16 @@ async function checkContentTypeColumn() {
       // Show current data distribution
       try {
         const dataDistribution = await client.query(`
-          SELECT "typeOfContent", COUNT(*) as count
+          SELECT "typeofcontent", COUNT(*) as count
           FROM asset_generate_files
-          GROUP BY "typeOfContent"
+          GROUP BY "typeofcontent"
           ORDER BY count DESC;
         `);
 
         if (dataDistribution.rows.length > 0) {
           console.log("\n📊 Current data distribution:");
           dataDistribution.rows.forEach((row) => {
-            console.log(`  - ${row.typeOfContent}: ${row.count} records`);
+            console.log(`  - ${row.typeofcontent}: ${row.count} records`);
           });
         } else {
           console.log("\n📊 No data in asset_generate_files table");
@@ -231,7 +231,7 @@ async function checkContentTypeColumn() {
     }
   } catch (error) {
     console.error(
-      "❌ Error checking typeOfContent column status:",
+      "❌ Error checking typeofcontent column status:",
       error.message
     );
   } finally {
@@ -254,9 +254,9 @@ async function main() {
       default:
         console.log("Usage: node addContentTypeColumn.js [add|check]");
         console.log(
-          "  add:   Add typeOfContent column to asset_generate_files table"
+          "  add:   Add typeofcontent column to asset_generate_files table"
         );
-        console.log("  check: Check if typeOfContent column exists");
+        console.log("  check: Check if typeofcontent column exists");
         break;
     }
   } catch (error) {

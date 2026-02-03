@@ -620,6 +620,8 @@ const adminApproveTemplate = asyncHandler(async (req, res) => {
     button_mappings = {},
   } = req.body;
 
+  console.log("adminApproveTemplate", req.body);
+
   if (!["super_admin", "system_admin"].includes(req.user.role)) {
     throw new AppError(
       "Only super admin and system admin can admin approve templates",
@@ -710,18 +712,24 @@ const adminApproveTemplate = asyncHandler(async (req, res) => {
 
   // Check for interactive buttons
   const buttonComponent = components?.find((comp) => comp.type === "BUTTONS");
+  const hasUrlButtons =
+    buttonComponent &&
+    buttonComponent.buttons &&
+    buttonComponent.buttons.some((button) => button.type !== "URL");
   const hasInteractiveButtons = !!(buttonComponent && buttonComponent.buttons);
   let detectedButtons = [];
 
   if (hasInteractiveButtons) {
-    detectedButtons = buttonComponent.buttons.map((button) => ({
-      text: button.text,
-      type: button.type,
-    }));
+    detectedButtons = buttonComponent.buttons
+      .map((button) => ({
+        text: button.text,
+        type: button.type,
+      }))
+      .filter((button) => button.type != "URL");
   }
 
   // Validate button mappings if template has interactive buttons
-  if (hasInteractiveButtons && !is_auto_reply_template) {
+  if (hasInteractiveButtons && !is_auto_reply_template && hasUrlButtons) {
     if (Object.keys(button_mappings).length === 0) {
       return res.status(400).json({
         success: false,
@@ -795,7 +803,13 @@ const adminApproveTemplate = asyncHandler(async (req, res) => {
 
   const finalIsAutoReply = is_auto_reply_template;
   const finalButtonMappings =
-    hasInteractiveButtons && !is_auto_reply_template ? button_mappings : {};
+    hasInteractiveButtons && is_auto_reply_template ? button_mappings : {};
+
+  console.log("finalIsAutoReply", finalIsAutoReply);
+  console.log("finalButtonMappings", finalButtonMappings);
+  console.log("is_auto_reply_template", is_auto_reply_template);
+  console.log("button_mappings", button_mappings);
+  console.log("hasInteractiveButtons", hasInteractiveButtons);
 
   const updatedTemplate = await Template.adminApproveTemplate(
     templateId,

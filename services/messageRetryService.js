@@ -124,10 +124,17 @@ class MessageRetryService {
         100
       );
 
-      // Filter messages based on progressive retry delays
-      const eligibleMessages = result
-        .map((row) => this.parseMessageForRetry(row))
-        .filter((message) => this.isEligibleForRetry(message));
+      console.log("result", result);
+
+      // Parse messages - filtering now done in SQL query using next_retry_at
+      const eligibleMessages = result.map((row) =>
+        this.parseMessageForRetry(row)
+      );
+
+      logger.info("Found eligible messages for retry", {
+        count: eligibleMessages.length,
+        retryableOnly: true,
+      });
 
       return eligibleMessages;
     } catch (error) {
@@ -150,7 +157,16 @@ class MessageRetryService {
       for (const message of messages) {
         try {
           // Generate SQS message payload
+          logger.info("Generating retry payload for message", {
+            messageId: message.id,
+          });
+          logger.info("message", message);
+
           const sqsPayload = await this.generateRetryPayload(message);
+
+          
+          logger.info("sqsPayload", sqsPayload);
+       
 
           if (sqsPayload) {
             sqsMessages.push(sqsPayload);
@@ -297,6 +313,8 @@ class MessageRetryService {
         throw new Error("Invalid message payload generated for retry");
       }
 
+      messagePayload.messageId = message.id;
+
       logger.info("Retry payload generated successfully", {
         messageId: message.id,
         payload: messagePayload,
@@ -364,6 +382,7 @@ class MessageRetryService {
       retry_count: row.retry_count || 0,
       message_status: row.message_status,
       updated_at: row.updated_at,
+      messageId: row.messageId,
     };
   }
 
@@ -428,7 +447,8 @@ class MessageRetryService {
   }
 
   /**
-   * Get retry delay based on retry count
+   * Get retry delay based on retry count (DEPRECATED - now handled in Lambda)
+   * Kept for backward compatibility
    * @param {number} retryCount - Current retry count
    * @returns {number} Delay in hours
    */
@@ -438,11 +458,21 @@ class MessageRetryService {
   }
 
   /**
-   * Check if message is eligible for retry based on progressive delays
+   * Check if message is eligible for retry (DEPRECATED - now handled in SQL query)
+   * Eligibility is now determined by next_retry_at field in database
+   * Kept for backward compatibility
    * @param {Object} message - Message object
    * @returns {boolean} Whether message is eligible for retry
    */
   isEligibleForRetry(message) {
+    // If next_retry_at is set, use it
+    if (message.next_retry_at) {
+      const now = new Date();
+      const nextRetry = new Date(message.next_retry_at);
+      return now >= nextRetry;
+    }
+
+    // Fallback to old logic for messages without next_retry_at
     const now = new Date();
     const updatedAt = new Date(message.updated_at);
     const retryDelayHours = this.getRetryDelayHours(message.retry_count);

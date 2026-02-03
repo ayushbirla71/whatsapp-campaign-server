@@ -20,9 +20,9 @@ class AssetGenerateFile extends BaseModel {
     try {
       // Validate content type
       if (
-        fileData.typeOfContent &&
+        fileData.typeofcontent &&
         !Object.values(AssetGenerateFile.CONTENT_TYPES).includes(
-          fileData.typeOfContent
+          fileData.typeofcontent
         )
       ) {
         throw new Error(
@@ -33,8 +33,8 @@ class AssetGenerateFile extends BaseModel {
       }
 
       // Set default content type if not provided
-      if (!fileData.typeOfContent) {
-        fileData.typeOfContent = AssetGenerateFile.CONTENT_TYPES.PUBLIC;
+      if (!fileData.typeofcontent) {
+        fileData.typeofcontent = AssetGenerateFile.CONTENT_TYPES.PUBLIC;
       }
 
       return await super.create(fileData);
@@ -63,10 +63,10 @@ class AssetGenerateFile extends BaseModel {
       let paramCount = 1;
 
       // Apply filters
-      if (filters.typeOfContent) {
+      if (filters.typeofcontent) {
         paramCount++;
         query += ` AND agf.typeofcontent = $${paramCount}`;
-        values.push(filters.typeOfContent);
+        values.push(filters.typeofcontent);
       }
 
       if (filters.is_active !== undefined) {
@@ -186,7 +186,7 @@ class AssetGenerateFile extends BaseModel {
       }
 
       const updateData = {
-        typeOfContent: contentType,
+        typeofcontent: contentType,
       };
 
       return await this.update(fileId, updateData);

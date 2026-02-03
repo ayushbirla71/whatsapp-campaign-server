@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 /**
- * Test script for typeOfContent functionality
+ * Test script for typeofcontent functionality
  * This script tests the asset file creation with content types
  */
 
@@ -20,7 +20,7 @@ async function testContentTypeValidation() {
       template_id: "123e4567-e89b-12d3-a456-426614174000",
       file_name: "test_public.py",
       file_content: "def generate_asset(): pass",
-      typeOfContent: "public",
+      typeofcontent: "public",
       description: "Test public asset file",
     };
 
@@ -28,7 +28,7 @@ async function testContentTypeValidation() {
       template_id: "123e4567-e89b-12d3-a456-426614174000",
       file_name: "test_personalized.py",
       file_content: "def generate_asset(): pass",
-      typeOfContent: "personalized",
+      typeofcontent: "personalized",
       description: "Test personalized asset file",
     };
 
@@ -59,7 +59,7 @@ async function testContentTypeValidation() {
       template_id: "123e4567-e89b-12d3-a456-426614174000",
       file_name: "test_invalid.py",
       file_content: "def generate_asset(): pass",
-      typeOfContent: "invalid_type",
+      typeofcontent: "invalid_type",
       description: "Test invalid content type",
     };
 
@@ -126,7 +126,7 @@ async function testAssetGenerateFileModel() {
         template_id: "123e4567-e89b-12d3-a456-426614174000",
         file_name: "test_model.py",
         file_content: "def generate_asset(): pass",
-        typeOfContent: "public",
+        typeofcontent: "public",
         description: "Test model validation",
       };
 
@@ -143,7 +143,7 @@ async function testAssetGenerateFileModel() {
         template_id: "123e4567-e89b-12d3-a456-426614174000",
         file_name: "test_model_invalid.py",
         file_content: "def generate_asset(): pass",
-        typeOfContent: "invalid",
+        typeofcontent: "invalid",
         description: "Test model validation with invalid type",
       };
 
@@ -175,7 +175,7 @@ async function testContentTypeStatistics() {
     } else {
       stats.forEach((stat) => {
         console.log(
-          `  ${stat.typeOfContent}: ${stat.total_files} total, ${stat.active_files} active`
+          `  ${stat.typeofcontent}: ${stat.total_files} total, ${stat.active_files} active`
         );
       });
     }
@@ -223,12 +223,12 @@ async function showDatabaseSchema() {
 
     if (columnResult.rows.length > 0) {
       const col = columnResult.rows[0];
-      console.log("\n✅ typeOfContent column info:");
+      console.log("\n✅ typeofcontent column info:");
       console.log(`  - Type: ${col.udt_name}`);
       console.log(`  - Nullable: ${col.is_nullable}`);
       console.log(`  - Default: ${col.column_default || "NULL"}`);
     } else {
-      console.log("\n❌ typeOfContent column not found");
+      console.log("\n❌ typeofcontent column not found");
     }
 
     await pool.end();
