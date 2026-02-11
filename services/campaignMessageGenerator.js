@@ -66,6 +66,8 @@ class CampaignMessageGenerator {
     };
 
     console.log("audienceData", audienceData);
+    console.log("template data..", template);
+    console.log("base Message..", baseMessage);
 
     // Generate template parameters from audience attributes and template components
     if (template.components && Array.isArray(template.components)) {
@@ -76,6 +78,8 @@ class CampaignMessageGenerator {
         template
       );
     }
+
+    console.log("....>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>", templateMessage)
 
     return templateMessage;
   }
@@ -170,15 +174,29 @@ class CampaignMessageGenerator {
 
       if (component.type === "HEADER") {
         if (component.format === "TEXT" && component.text) {
-          parameters.push({
-            type: "header",
-            valueType: "text",
-            value: this.replacePlaceholders(
-              component.text,
-              { attributes },
-              template.parameters || {}
-            ),
-          });
+          // parameters.push({
+          //   type: "header",
+          //   valueType: "text",
+          //   value: this.replacePlaceholders(
+          //     component.text,
+          //     { attributes },
+          //     template.parameters || {}
+          //   ),
+          // });
+
+           const headerParams = this.extractBodyParameters(
+      component.text,
+      attributes,
+      template.parameters || {}
+    );
+
+    headerParams.forEach(param => {
+      parameters.push({
+        type: "header",
+        valueType: "text",
+        value: param.value,
+      });
+    });
         } else if (
           component.format === "IMAGE" ||
           component.format === "VIDEO" ||
