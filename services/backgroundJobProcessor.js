@@ -25,9 +25,9 @@ class BackgroundJobProcessor {
     logger.info("Starting background job processor");
 
     // Start individual services
-    campaignProcessingService.start();
-    messageRetryService.start();
-    autoReplyService.start();
+    // campaignProcessingService.start();
+    // messageRetryService.start();
+    // autoReplyService.start();
 
     // Start health check
     this.startHealthCheck();
