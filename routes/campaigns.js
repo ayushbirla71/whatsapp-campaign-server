@@ -27,7 +27,7 @@ router.use(authenticate);
 router.get(
   "/pending-approval",
   authorize("super_admin", "system_admin"),
-  campaignController.getPendingApprovalCampaigns
+  campaignController.getPendingApprovalCampaigns,
 );
 
 // Organization-specific campaign routes
@@ -38,12 +38,12 @@ router.get(
     "super_admin",
     "system_admin",
     "organization_admin",
-    "organization_user"
+    "organization_user",
   ),
   validateUUID("organizationId"),
   validatePagination,
   authorizeOrganization,
-  campaignController.getCampaigns
+  campaignController.getCampaigns,
 );
 
 // Create campaign for an organization
@@ -53,7 +53,7 @@ router.post(
   validateUUID("organizationId"),
   validateCampaignCreation,
   authorizeOrganization,
-  campaignController.createCampaign
+  campaignController.createCampaign,
 );
 
 // Get campaign statistics for an organization
@@ -63,11 +63,11 @@ router.get(
     "super_admin",
     "system_admin",
     "organization_admin",
-    "organization_user"
+    "organization_user",
   ),
   validateUUID("organizationId"),
   authorizeOrganization,
-  campaignController.getCampaignStats
+  campaignController.getCampaignStats,
 );
 
 // Campaign-specific routes
@@ -78,10 +78,23 @@ router.get(
     "super_admin",
     "system_admin",
     "organization_admin",
-    "organization_user"
+    "organization_user",
   ),
   validateUUID("campaignId"),
-  campaignController.getCampaignById
+  campaignController.getCampaignById,
+);
+
+// ADD THIS ROUTE
+router.get(
+  "/:campaignId/audience-filter",
+  authorize(
+    "super_admin",
+    "system_admin",
+    "organization_admin",
+    "organization_user",
+  ),
+  validateUUID("campaignId"),
+  audienceController.getCampaignAudience,
 );
 
 // Update campaign
@@ -90,7 +103,7 @@ router.put(
   authorize("super_admin", "system_admin", "organization_admin"),
   validateUUID("campaignId"),
   validateCampaignUpdate,
-  campaignController.updateCampaign
+  campaignController.updateCampaign,
 );
 
 // Delete campaign
@@ -98,7 +111,7 @@ router.delete(
   "/:campaignId",
   authorize("super_admin", "system_admin", "organization_admin"),
   validateUUID("campaignId"),
-  campaignController.deleteCampaign
+  campaignController.deleteCampaign,
 );
 
 // Campaign workflow routes
@@ -107,7 +120,7 @@ router.post(
   "/:campaignId/submit-approval",
   authorize("super_admin", "system_admin", "organization_admin"),
   validateUUID("campaignId"),
-  campaignController.submitForApproval
+  campaignController.submitForApproval,
 );
 
 // Approve campaign (super admin and system admin only)
@@ -115,7 +128,7 @@ router.post(
   "/:campaignId/approve",
   authorize("super_admin", "system_admin"),
   validateUUID("campaignId"),
-  campaignController.approveCampaign
+  campaignController.approveCampaign,
 );
 
 // Reject campaign (super admin and system admin only)
@@ -124,7 +137,7 @@ router.post(
   authorize("super_admin", "system_admin"),
   validateUUID("campaignId"),
   validateCampaignRejection,
-  campaignController.rejectCampaign
+  campaignController.rejectCampaign,
 );
 
 // Campaign control routes
@@ -133,7 +146,7 @@ router.post(
   "/:campaignId/start",
   authorize("super_admin", "system_admin"),
   validateUUID("campaignId"),
-  campaignController.startCampaign
+  campaignController.startCampaign,
 );
 
 // Pause campaign
@@ -141,7 +154,7 @@ router.post(
   "/:campaignId/pause",
   authorize("super_admin", "system_admin"),
   validateUUID("campaignId"),
-  campaignController.pauseCampaign
+  campaignController.pauseCampaign,
 );
 
 // Cancel campaign
@@ -149,7 +162,7 @@ router.post(
   "/:campaignId/cancel",
   authorize("super_admin", "system_admin", "organization_admin"),
   validateUUID("campaignId"),
-  campaignController.cancelCampaign
+  campaignController.cancelCampaign,
 );
 
 // Campaign audience routes
@@ -160,11 +173,11 @@ router.get(
     "super_admin",
     "system_admin",
     "organization_admin",
-    "organization_user"
+    "organization_user",
   ),
   validateUUID("campaignId"),
   validatePagination,
-  audienceController.getCampaignAudience
+  audienceController.getCampaignAudience,
 );
 
 // Add audience to campaign
@@ -173,7 +186,7 @@ router.post(
   authorize("super_admin", "system_admin", "organization_admin"),
   validateUUID("campaignId"),
   validateBulkAudience,
-  audienceController.addAudienceToCampaign
+  audienceController.addAudienceToCampaign,
 );
 
 // Remove audience from campaign
@@ -182,7 +195,7 @@ router.delete(
   authorize("super_admin", "system_admin", "organization_admin"),
   validateUUID("campaignId"),
   validateRemoveAudience,
-  audienceController.removeAudienceFromCampaign
+  audienceController.removeAudienceFromCampaign,
 );
 
 // Update message status for campaign audience
@@ -191,7 +204,7 @@ router.put(
   authorize("super_admin", "system_admin"),
   validateUUID("campaignAudienceId"),
   validateMessageStatusUpdate,
-  audienceController.updateMessageStatus
+  audienceController.updateMessageStatus,
 );
 
 // Campaign processing routes
@@ -200,21 +213,21 @@ router.post(
   "/:campaignId/process-messages",
   authorize("super_admin", "system_admin"),
   validateUUID("campaignId"),
-  campaignController.processCampaignMessages
+  campaignController.processCampaignMessages,
 );
 
 // Get SQS queue status
 router.get(
   "/sqs-status",
   authorize("super_admin", "system_admin"),
-  campaignController.getSQSStatus
+  campaignController.getSQSStatus,
 );
 
 // Retry failed messages
 router.post(
   "/retry-failed-messages",
   authorize("super_admin", "system_admin"),
-  campaignController.retryFailedMessages
+  campaignController.retryFailedMessages,
 );
 
 module.exports = router;

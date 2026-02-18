@@ -126,14 +126,14 @@ const createCampaign = asyncHandler(async (req, res) => {
   if (template.status !== "approved") {
     throw new AppError(
       "Only approved templates can be used for campaigns",
-      400
+      400,
     );
   }
 
   if (template.approved_by_admin !== "approved") {
     throw new AppError(
       "Template must be admin approved before it can be used for campaigns",
-      400
+      400,
     );
   }
 
@@ -147,19 +147,19 @@ const createCampaign = asyncHandler(async (req, res) => {
   if (validationErrors.length > 0) {
     throw new AppError(
       `Validation failed: ${validationErrors.join(", ")}`,
-      400
+      400,
     );
   }
 
   // Check for duplicate campaign name in organization
   const existingCampaign = await Campaign.findByNameAndOrganization(
     campaignData.name,
-    organizationId
+    organizationId,
   );
   if (existingCampaign) {
     throw new AppError(
       "Campaign with this name already exists in the organization",
-      409
+      409,
     );
   }
 
@@ -216,7 +216,7 @@ const updateCampaign = asyncHandler(async (req, res) => {
   if (["running", "completed", "cancelled"].includes(campaign.status)) {
     throw new AppError(
       "Cannot update campaigns that are running, completed, or cancelled",
-      400
+      400,
     );
   }
 
@@ -277,7 +277,7 @@ const deleteCampaign = asyncHandler(async (req, res) => {
   if (["running", "scheduled"].includes(campaign.status)) {
     throw new AppError(
       "Cannot delete running or scheduled campaigns. Cancel the campaign first.",
-      400
+      400,
     );
   }
 
@@ -315,14 +315,14 @@ const submitForApproval = asyncHandler(async (req, res) => {
   if (req.user.role === "organization_user") {
     throw new AppError(
       "Organization users cannot submit campaigns for approval",
-      403
+      403,
     );
   }
 
   if (campaign.status !== "draft" && campaign.status !== "rejected") {
     throw new AppError(
       "Only draft or rejected campaigns can be submitted for approval",
-      400
+      400,
     );
   }
 
@@ -330,13 +330,13 @@ const submitForApproval = asyncHandler(async (req, res) => {
   if (campaign.total_targeted_audience === 0) {
     throw new AppError(
       "Campaign must have at least one audience member before submission",
-      400
+      400,
     );
   }
 
   const updatedCampaign = await Campaign.submitForApproval(
     campaignId,
-    req.user.id
+    req.user.id,
   );
 
   logger.info("Campaign submitted for approval", {
@@ -377,7 +377,7 @@ const approveCampaign = asyncHandler(async (req, res) => {
   if (!["super_admin", "system_admin"].includes(req.user.role)) {
     throw new AppError(
       "Only super admin and system admin can approve campaigns",
-      403
+      403,
     );
   }
 
@@ -392,7 +392,7 @@ const approveCampaign = asyncHandler(async (req, res) => {
 
   const updatedCampaign = await Campaign.approveCampaign(
     campaignId,
-    req.user.id
+    req.user.id,
   );
 
   logger.info("Campaign approved", {
@@ -418,7 +418,7 @@ const rejectCampaign = asyncHandler(async (req, res) => {
   if (!["super_admin", "system_admin"].includes(req.user.role)) {
     throw new AppError(
       "Only super admin and system admin can reject campaigns",
-      403
+      403,
     );
   }
 
@@ -438,7 +438,7 @@ const rejectCampaign = asyncHandler(async (req, res) => {
   const updatedCampaign = await Campaign.rejectCampaign(
     campaignId,
     req.user.id,
-    rejection_reason
+    rejection_reason,
   );
 
   logger.info("Campaign rejected", {
@@ -464,7 +464,7 @@ const startCampaign = asyncHandler(async (req, res) => {
   if (!["super_admin", "system_admin"].includes(req.user.role)) {
     throw new AppError(
       "Only super admin and system admin can start campaigns",
-      403
+      403,
     );
   }
 
@@ -476,7 +476,7 @@ const startCampaign = asyncHandler(async (req, res) => {
   if (campaign.status !== "approved" && campaign.status !== "scheduled") {
     throw new AppError(
       "Only approved or scheduled campaigns can be started",
-      400
+      400,
     );
   }
 
@@ -503,7 +503,7 @@ const pauseCampaign = asyncHandler(async (req, res) => {
   if (!["super_admin", "system_admin"].includes(req.user.role)) {
     throw new AppError(
       "Only super admin and system admin can pause campaigns",
-      403
+      403,
     );
   }
 
@@ -610,7 +610,7 @@ const processCampaignMessages = asyncHandler(async (req, res) => {
   if (!["super_admin", "system_admin"].includes(req.user.role)) {
     throw new AppError(
       "Only super admin and system admin can process campaign messages",
-      403
+      403,
     );
   }
 
@@ -622,7 +622,7 @@ const processCampaignMessages = asyncHandler(async (req, res) => {
   if (campaign.status !== "asset_generated") {
     throw new AppError(
       "Only campaigns with asset_generated status can be processed",
-      400
+      400,
     );
   }
 
@@ -655,7 +655,7 @@ const processCampaignMessages = asyncHandler(async (req, res) => {
 
     throw new AppError(
       `Failed to process campaign messages: ${error.message}`,
-      500
+      500,
     );
   }
 });
@@ -665,7 +665,7 @@ const getSQSStatus = asyncHandler(async (req, res) => {
   if (!["super_admin", "system_admin"].includes(req.user.role)) {
     throw new AppError(
       "Only super admin and system admin can check SQS status",
-      403
+      403,
     );
   }
 
@@ -702,7 +702,7 @@ const retryFailedMessages = asyncHandler(async (req, res) => {
   if (!["super_admin", "system_admin"].includes(req.user.role)) {
     throw new AppError(
       "Only super admin and system admin can retry failed messages",
-      403
+      403,
     );
   }
 
@@ -732,7 +732,7 @@ const retryFailedMessages = asyncHandler(async (req, res) => {
 
     throw new AppError(
       `Failed to trigger message retry: ${error.message}`,
-      500
+      500,
     );
   }
 });
@@ -769,7 +769,7 @@ const getAllCampaigns = asyncHandler(async (req, res) => {
       // Organization admin and user can only see their organization's campaigns
       campaigns = await Campaign.findByOrganization(
         req.user.organization_id,
-        filters
+        filters,
       );
       total = await Campaign.count({
         organization_id: req.user.organization_id,

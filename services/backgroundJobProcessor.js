@@ -25,9 +25,9 @@ class BackgroundJobProcessor {
     logger.info("Starting background job processor");
 
     // Start individual services
-    campaignProcessingService.start();
-    messageRetryService.start();
-    autoReplyService.start();
+    // campaignProcessingService.start();
+    // messageRetryService.start();
+    // autoReplyService.start();
 
     // Start health check
     this.startHealthCheck();
@@ -68,7 +68,7 @@ class BackgroundJobProcessor {
       // Check if campaign processing service is still running
       if (!campaignProcessingService.isProcessing) {
         logger.warn(
-          "Campaign processing service is not running, restarting..."
+          "Campaign processing service is not running, restarting...",
         );
         campaignProcessingService.start();
       }
@@ -107,7 +107,7 @@ class BackgroundJobProcessor {
   setupGracefulShutdown() {
     const gracefulShutdown = (signal) => {
       logger.info(
-        `Received ${signal}, shutting down background job processor gracefully`
+        `Received ${signal}, shutting down background job processor gracefully`,
       );
       this.stop();
       process.exit(0);
@@ -195,9 +195,12 @@ class BackgroundJobProcessor {
     }
 
     // Run health check every 5 minutes
-    this.healthCheckIntervalId = setInterval(() => {
-      this.performHealthCheck();
-    }, 5 * 60 * 1000);
+    this.healthCheckIntervalId = setInterval(
+      () => {
+        this.performHealthCheck();
+      },
+      5 * 60 * 1000,
+    );
 
     logger.info("Health check started");
   }
