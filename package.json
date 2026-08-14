@@ -13,6 +13,8 @@
     "db:cleanup": "node scripts/initDatabase.js cleanup",
     "db:migrate-webhooks": "node scripts/migrateWebhookTables.js migrate",
     "db:check-webhooks": "node scripts/migrateWebhookTables.js status",
+    "db:migrate-webhook-api": "node scripts/migrateWebhookApiEnhancements.js migrate",
+    "db:check-webhook-api": "node scripts/migrateWebhookApiEnhancements.js status",
     "db:add-caption": "node scripts/addCaptionColumn.js add",
     "db:check-caption": "node scripts/addCaptionColumn.js check",
     "db:add-filename": "node scripts/addFilenameColumn.js add",
